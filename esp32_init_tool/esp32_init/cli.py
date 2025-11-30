@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+
+# Copyright 2025 David M. King
 # SPDX-License-Identifier: Apache-2.0
 
 import argparse
