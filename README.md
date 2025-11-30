@@ -1,4 +1,4 @@
-# ⚠️Warning: This is very much a new work in progress. Many stubs and not-working code.⚠️
+# ⚠️Warning: This is very much a new work in progress. Many stubs and non-working code.⚠️
 
 # ESP32 Starter – Project & Board Generator for ESP-IDF
 
