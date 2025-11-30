@@ -1,3 +1,6 @@
+# Copyright 2025 David M. King
+# SPDX-License-Identifier: Apache-2.0
+
 from pathlib import Path
 
 # .../esp32-starter/esp32_init_tool/esp32_init/paths.py

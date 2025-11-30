@@ -1,3 +1,6 @@
+# Copyright 2025 David M. King
+# SPDX-License-Identifier: Apache-2.0
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, Dict, List

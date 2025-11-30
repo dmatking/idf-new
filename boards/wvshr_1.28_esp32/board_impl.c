@@ -1,3 +1,6 @@
+// Copyright 2025 David M. King
+// SPDX-License-Identifier: Apache-2.0
+
 #include "board_if.h"
 #include "esp_log.h"
 
