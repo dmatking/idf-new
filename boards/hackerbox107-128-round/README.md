@@ -3,7 +3,7 @@
 A compact, high-quality circular ESP32 board included with **HackerBox #107**.
 Features a GC9A01 TFT header, micro-SD slot, FPC connector, and a very unusual **true hardware power switch**.
 
-![Board Photo](hackerbox107-1.28.webp)
+![Board Photo](images/hackerbox107-1.28.webp)
 
 ---
 
@@ -25,7 +25,7 @@ This board is **not** a generic AliExpress part — it is cleanly laid out, well
 
 ## Pin Reference (from the included annotated diagram)
 
-### General I/O
+### FPC I/O
 ```
 IO26     U1_TX
 IO25     U1_RX
@@ -66,7 +66,7 @@ GND
 
 ### FPC Connector
 - Additional mixed-signal GPIO via flat-flex
-- Pinout varies; requires continuity check or schematic (not provided)
+- See pinout above
 
 ---
 
@@ -107,21 +107,17 @@ Some SD-card pins overlap with TFT pins (IO14 / IO15), so simultaneous SD + TFT 
 If flashing fails, ensure:
 - Power switch is ON
 - Board is actually enumerated in Device Manager
-- Hold BOOT (if present) during flash (depends on board revision)
 
 ---
 
 ## Verified Working
 
 - [x] USB power + power button
-- [x] UART0 over USB-C
+- [ ] UART0 over USB-C
 - [x] GC9A01 round TFT
 - [ ] SD card (not tested)
-- [x] GPIO buttons (IO19, IO4)
+- [ ] GPIO buttons (IO19, IO4)
 
 ---
 
-## Folder Contents
 
-- `README.md`
-- `board.jpg` (you provide)
