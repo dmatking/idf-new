@@ -8,8 +8,6 @@ This repo is designed to serve two purposes:
 1. **A user-friendly tool** (`esp32-init`) that generates clean ESP-IDF projects for specific boards with optional hardware feature modules (GPS, LVGL UI, WiFi helpers, etc.).  
 2. **A knowledge base** of board-specific wiring, reusable feature modules, and a minimal ESP-IDF template that together eliminate repetitive setup work.
 
-If you ever forget how the system works, or you're trying to explain it to ChatGPT, this README is meant to fully re-prime the context.
-
 ---
 
 ## 🚀 What This Tool Does
@@ -155,18 +153,6 @@ esp32-init <project_name> --board <board_id> [--gps] [--lvgl]
 
 All original code in this repository is licensed under Apache License 2.0.  
 ESP-IDF and its bundled third-party libraries are licensed separately under permissive licenses (Apache, MIT, BSD, etc.).
-
----
-
-## 📚 Why This README Exists
-
-This README is intentionally detailed to:
-
-- help future-you remember the system  
-- re-prime ChatGPT instantly  
-- provide a complete overview to new users  
-
-It fully documents the architecture, vocabulary, and workflow behind the generator system.
 
 ---
 
