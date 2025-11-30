@@ -1,0 +1,13 @@
+# IDF build outputs
+build/
+sdkconfig
+sdkconfig.old
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# VSCode / IDE stuff
+.vscode/
+.idea/
