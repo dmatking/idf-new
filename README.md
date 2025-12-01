@@ -4,7 +4,7 @@
 #### ESP-IDF verion 5.5.1
 
 ## What is working?
- - Main cli - currently you can call it from the esp32-starter directory like so:  `python -m esp32_init_tool.esp32_init.cli project_name --board generic`
+ - Main CLI - invoke it from the repo root with `idf-new project_name --board generic` (or run `python -m idf_new_tool.idf_new.cli ...` during development)
  - Boards
     - Generic ESP32 - very simple test that should work for almost any ESP32. Creates a FreeRTOS task and outputs a count to the serial console. No other peripherals are initialized. [Generic ESP32](boards/generic/README.md)
     - hackerbox107-128-round [HackerBox 107](boards/hackerbox107-128-round/README.md)
@@ -19,14 +19,14 @@
  - Various Lilygo dev boards [Lilygo](https://lilygo.cc/)
 
 
-# ESP32 Starter – Project & Board Generator for ESP-IDF
+# idf-new – ESP-IDF Project Generator
 
-**ESP32 Starter** is a modular project generator for ESP-IDF.  
+**idf-new** is a modular project generator for ESP-IDF.  
 It helps you quickly bootstrap working ESP32 projects across a large collection of ESP32 + display combo boards, without constantly digging through old repos to find pinouts, display configs, or boilerplate code.
 
 This repo is designed to serve two purposes:
 
-1. **A user-friendly tool** (`esp32-init`) that generates clean ESP-IDF projects for specific boards with optional hardware feature modules (GPS, LVGL UI, WiFi helpers, etc.).  
+1. **A user-friendly tool** (`idf-new`) that generates clean ESP-IDF projects for specific boards with optional hardware feature modules (GPS, LVGL UI, WiFi helpers, etc.).  
 2. **A knowledge base** of board-specific wiring, reusable feature modules, and a minimal ESP-IDF template that together eliminate repetitive setup work.
 
 ---
@@ -53,7 +53,7 @@ Setting up each project becomes tedious:
 **This tool solves that by letting you do:**
 
 ```bash
-python -m esp32_init_tool.esp32_init.cli my_project --board generic --gps --lvgl
+idf-new my_project --board generic --gps --lvgl
 ```
 
 …and you instantly get a *clean*, *minimal*, *correctly-wired*, *feature-enabled* ESP-IDF project.
@@ -67,11 +67,11 @@ Every project contains only the files it needs. No bloat.
 The system is made of four main pieces:
 
 ```
-esp32-starter/
+idf-new/
 ├── boards/           # Board pinouts & wiring (per-board C files)
 ├── features/         # Reusable C modules (GPS, LVGL, WiFi, etc.)
 ├── idf-templates/    # Minimal ESP-IDF project template
-└── esp32_init_tool/  # Python-based project generator
+└── idf_new_tool/     # Python-based project generator
 ```
 
 ---
@@ -92,11 +92,11 @@ The generator copies only selected features into new projects.
 Provides `main.c`, board interface, and base CMakeLists.  
 Contains no hardware or feature-specific code.
 
-### `esp32_init_tool/` – Python generator
+### `idf_new_tool/` – Python generator
 
 Implements:
 
-- CLI (`esp32-init`)
+- CLI (`idf-new`)
 - project creation logic
 - feature plugin system
 - board discovery & validation
@@ -109,7 +109,7 @@ Implements:
 Example:
 
 ```bash
-python -m esp32_init_tool.esp32_init.cli myapp --board generic --gps --lvgl
+idf-new myapp --board generic --gps --lvgl
 ```
 
 This:
@@ -145,7 +145,7 @@ Kconfig
 2. Add a Python module under:
 
 ```
-esp32_init_tool/esp32_init/features/<name>.py
+idf_new_tool/idf_new/features/<name>.py
 ```
 
 3. Register the feature in Python
@@ -157,15 +157,17 @@ You can now use `--<name>` in the generator.
 ## 🔧 Installation & Usage
 
 ```bash
-cd esp32_init_tool
+cd idf_new_tool
 pip install -e .
 ```
 
 Then:
 
 ```bash
-python -m esp32_init_tool.esp32_init.cli <project_name> --board <board_id> [--gps] [--lvgl]
+idf-new <project_name> --board <board_id> [--gps] [--lvgl]
 ```
+
+*(Developing inside this repo? You can equivalently run `python -m idf_new_tool.idf_new.cli ...`.)*
 
 ---
 

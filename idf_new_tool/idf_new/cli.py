@@ -15,7 +15,7 @@ from .generator import GenerationOptions, ProjectGenerator
 
 def build_parser() -> tuple[argparse.ArgumentParser, list]:
     parser = argparse.ArgumentParser(
-        description="Initialize a new ESP-IDF project from esp32-starter templates."
+        description="Initialize a new ESP-IDF project using idf-new templates."
     )
     parser.add_argument("project_name", nargs="?", help="Name of the new project directory")
     parser.add_argument("--board", help="Board ID (folder under boards/)")

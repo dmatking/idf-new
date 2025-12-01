@@ -3,9 +3,9 @@ requires = ["setuptools>=65", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "esp32-init"
+name = "idf-new"
 version = "0.1.0"
-description = "ESP32 Starter project generator for ESP-IDF"
+description = "idf-new project generator for ESP-IDF"
 authors = [{ name = "David M. King" }]
 license = { text = "Apache-2.0" }
 readme = "../README.md"
@@ -13,7 +13,7 @@ requires-python = ">=3.11"
 dependencies = []
 
 [project.scripts]
-esp32-init = "esp32_init.cli:main"
+idf-new = "idf_new.cli:main"
 
 [tool.setuptools.packages.find]
-where = ["esp32_init_tool"]
+where = ["idf_new_tool"]

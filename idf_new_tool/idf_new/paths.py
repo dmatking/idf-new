@@ -3,7 +3,7 @@
 
 from pathlib import Path
 
-# .../esp32-starter/esp32_init_tool/esp32_init/paths.py
+# .../idf-new/idf_new_tool/idf_new/paths.py
 ROOT = Path(__file__).resolve().parents[2]
 
 BOARDS_DIR    = ROOT / "boards"
