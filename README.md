@@ -9,6 +9,16 @@
     - Generic ESP32 - very simple test that should work for almost any ESP32. Creates a FreeRTOS task and outputs a count to the serial console. No other peripherals are initialized. [Generic ESP32](boards/generic/README.md)
     - hackerbox107-128-round [HackerBox 107](boards/hackerbox107-128-round/README.md)
 
+
+## Coming soon
+ - Waveshare ESP32-S3 1.85" round with and without touch [Waveshare 1.85"](https://www.waveshare.com/product/arduino/boards-kits/esp32-s3/esp32-s3-touch-lcd-1.85.htm)
+  - Waveshare ESP32-S3 2" 240x320 touch screen dev board [ESP32-S3 240x320 Board](https://www.waveshare.com/product/arduino/boards-kits/esp32-s3/esp32-s3-touch-lcd-2.htm)
+  - A really cool Waveshare ESP32-P4 Smart 86 Box Development Board with 720x720 touch screen [ESP32-P4 Smart 86 Box](https://www.waveshare.com/product/arduino/boards-kits/esp32-p4/esp32-p4-wifi6-touch-lcd-4b.htm)
+ - Official Espressif ESP32-P4-Function-EV-Board with 1024x600 touch screen [ESP32-P4-Function-EV-Board](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32p4/esp32-p4-function-ev-board/user_guide.html)
+ - Official Espressif ESP32-S3-DevKitC-1 [ESP32-S3-DevKitC-1] (https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide_v1.1.html#getting-started)
+ - Various Lilygo dev boards [Lilygo](https://lilygo.cc/)
+
+
 # ESP32 Starter – Project & Board Generator for ESP-IDF
 
 **ESP32 Starter** is a modular project generator for ESP-IDF.  
