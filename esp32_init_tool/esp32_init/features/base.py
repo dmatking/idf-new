@@ -1,6 +1,8 @@
 # Copyright 2025 David M. King
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, Dict, List
@@ -18,6 +20,8 @@ class Feature(Protocol):
 _registry: Dict[str, Feature] = {}
 
 def register(feature: Feature) -> None:
+    if feature.flag in _registry:
+        raise ValueError(f"Feature flag '{feature.flag}' already registered")
     _registry[feature.flag] = feature
 
 def get_feature(flag: str) -> Feature:

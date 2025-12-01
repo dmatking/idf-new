@@ -1,8 +1,7 @@
 # Copyright 2025 David M. King
 # SPDX-License-Identifier: Apache-2.0
 
-from pathlib import Path
-from .base import Feature, FeatureContext, register
+from .base import FeatureContext, register
 from ..paths import FEATURES_DIR
 
 class GPSFeature:
