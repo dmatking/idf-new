@@ -11,3 +11,6 @@ __pycache__/
 # VSCode / IDE stuff
 .vscode/
 .idea/
+
+# Local scratch space
+temp/
