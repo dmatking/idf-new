@@ -113,14 +113,14 @@ static void touch_logger_task(void *arg)
     bool touching = false;
     while (1) {
         if (s_touch) {
-            uint16_t x[1] = {0};
-            uint16_t y[1] = {0};
-            uint8_t points = 0;
+            esp_lcd_touch_point_data_t points_data[1] = {0};
+            uint8_t point_count = 0;
             esp_lcd_touch_read_data(s_touch);
-            bool pressed = esp_lcd_touch_get_coordinates(s_touch, x, y, NULL, &points, 1);
-            if (pressed && points > 0) {
+            esp_err_t err = esp_lcd_touch_get_data(s_touch, points_data, &point_count, 1);
+            bool pressed = (err == ESP_OK) && (point_count > 0);
+            if (pressed) {
                 touching = true;
-                ESP_LOGI(TAG, "Touch (%u,%u)", (unsigned)x[0], (unsigned)y[0]);
+                ESP_LOGI(TAG, "Touch (%u,%u)", (unsigned)points_data[0].x, (unsigned)points_data[0].y);
             } else if (touching) {
                 touching = false;
                 ESP_LOGI(TAG, "Touch released");

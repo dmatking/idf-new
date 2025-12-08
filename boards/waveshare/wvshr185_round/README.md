@@ -34,4 +34,4 @@ Waveshare ESP32-S3 1.85" round with and without touch [Waveshare 1.85"](https://
 
 - The base `board_impl.c` already contains the minimal ST77916 bring-up for this kit, so no extra vendor sources are required.
 - If you do not require the TE line, you can leave IO18 floating; it is only used for tearing sync.
-- The board ships without a touch controller. Use the `wvshr_1.85_esp32s3_touch` target if you have the CST816-equipped version.
+- The board ships without a touch controller. Use the `waveshare/wvshr185_round_touch` target if you have the CST816-equipped version.

@@ -8,7 +8,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .boards import list_boards
+from .boards import BoardInfo, list_boards
 from .features import list_features
 from .generator import GenerationOptions, ProjectGenerator
 
@@ -17,10 +17,19 @@ def build_parser() -> tuple[argparse.ArgumentParser, list]:
     parser = argparse.ArgumentParser(
         description="Initialize a new ESP-IDF project using idf-new templates."
     )
-    parser.add_argument("project_name", nargs="?", help="Name of the new project directory")
+    parser.add_argument(
+        "project_name",
+        nargs="?",
+        help="Name of the new project directory (prompted if omitted)",
+    )
     parser.add_argument(
         "--board",
-        help="Board ID (relative path under boards/, e.g., waveshare/wvshr_1.85_esp32s3)",
+        help="Board ID (relative path under boards/, e.g., waveshare/wvshr185_round_touch)",
+    )
+    parser.add_argument(
+        "--interactive",
+        action="store_true",
+        help="Interactively list boards and let you pick one",
     )
     parser.add_argument(
         "--dest",
@@ -49,13 +58,103 @@ def build_parser() -> tuple[argparse.ArgumentParser, list]:
     return parser, available_features
 
 
+def _format_screen(info: BoardInfo) -> str | None:
+    screen = info.screen
+    if not screen:
+        return None
+    parts: list[str] = []
+    if screen.size_inches:
+        parts.append(f"{screen.size_inches:g}\"")
+    if screen.resolution:
+        parts.append(str(screen.resolution))
+    if screen.technology:
+        parts.append(str(screen.technology))
+    if screen.shape:
+        parts.append(f"{screen.shape} shape")
+    return " ".join(parts) if parts else None
+
+
+def _format_traits(info: BoardInfo) -> list[str]:
+    traits: list[str] = []
+    if info.has_touch:
+        traits.append("touch")
+    if info.screen and info.screen.shape:
+        traits.append(str(info.screen.shape))
+    if info.screen and info.screen.technology:
+        traits.append(str(info.screen.technology).lower())
+    traits.extend(info.features)
+    if info.panel:
+        traits.append(str(info.panel).lower())
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for trait in traits:
+        key = trait.lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        ordered.append(trait)
+    return ordered
+
+
+
+def _ensure_boards_available() -> list[BoardInfo]:
+    boards = list_boards()
+    if not boards:
+        raise SystemExit("No boards found under boards/. Add one before using idf-new.")
+    return boards
+
+
+def _prompt_board_selection(default: str | None = None) -> str:
+    boards = _ensure_boards_available()
+    print("Select a board:")
+    for idx, info in enumerate(boards, start=1):
+        print(f"  {idx}) {info.display_name} [{info.board_id}]")
+    if default:
+        print(f"Press Enter for default [{default}] or choose a number (q to cancel):")
+    else:
+        print("Enter the number of the board to use (or 'q' to cancel):")
+    while True:
+        choice = input("> ").strip()
+        lower_choice = choice.lower()
+        if lower_choice in {"q", "quit"}:
+            raise SystemExit("Board selection cancelled")
+        if not choice and default:
+            return default
+        try:
+            index = int(choice)
+        except ValueError:
+            print("Please enter a number from the list or 'q' to quit.")
+            continue
+        if 1 <= index <= len(boards):
+            return boards[index - 1].board_id
+        print("Selection out of range. Try again.")
+
+
+def _prompt_project_name(default: str) -> str:
+    while True:
+        value = input(f"Project name [{default}]: ").strip()
+        if not value:
+            return default
+        if "/" in value or value == ".":
+            print("Please enter a simple directory name (no slashes).")
+            continue
+        return value
+
+
 def _handle_listing(args: argparse.Namespace, features: list) -> bool:
     if args.list_boards:
         boards = list_boards()
         if boards:
             print("Available boards:")
-            for board in boards:
-                print(f"  - {board}")
+            for info in boards:
+                print(f"  - {info.board_id}")
+                print(f"    Name: {info.display_name}")
+                screen_desc = _format_screen(info)
+                if screen_desc:
+                    print(f"    Screen: {screen_desc}")
+                traits = _format_traits(info)
+                if traits:
+                    print(f"    Traits: {', '.join(traits)}")
         else:
             print("No boards found under boards/.")
         return True
@@ -79,16 +178,20 @@ def main() -> None:
     if _handle_listing(args, features):
         return
 
-    if not args.project_name:
-        parser.error("project_name is required")
-    if not args.board:
-        parser.error("--board is required")
+    boards_available = _ensure_boards_available()
+    default_board = boards_available[0].board_id if boards_available else "generic"
+
+    board_id = args.board
+    if args.interactive or not board_id:
+        board_id = _prompt_board_selection(default=board_id or default_board)
+
+    project_name = args.project_name or _prompt_project_name("generic_esp32")
 
     enabled_features = [f.flag for f in features if getattr(args, f.flag)]
 
     options = GenerationOptions(
-        project_name=args.project_name,
-        board_id=args.board,
+        project_name=project_name,
+        board_id=board_id,
         destination=args.dest,
         feature_flags=enabled_features,
     )

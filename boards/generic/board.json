@@ -1,0 +1,5 @@
+{
+  "display_name": "Generic ESP32 Target",
+  "features": ["headless"],
+  "has_touch": false
+}

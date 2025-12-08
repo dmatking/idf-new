@@ -1,0 +1,12 @@
+{
+  "display_name": "HackerBox 107 Round ESP32",
+  "panel": "GC9A01",
+  "has_touch": false,
+  "screen": {
+    "size_inches": 1.28,
+    "resolution": "240x240",
+    "technology": "IPS",
+    "shape": "round"
+  },
+  "features": ["round", "gc9a01", "tft"]
+}

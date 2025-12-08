@@ -1,0 +1,12 @@
+{
+  "display_name": "Waveshare ESP32-S3 Round Touch LCD 1.85\"",
+  "panel": "ST77916",
+  "has_touch": true,
+  "screen": {
+    "size_inches": 1.85,
+    "resolution": "360x360",
+    "technology": "IPS",
+    "shape": "round"
+  },
+  "features": ["round", "qspi"]
+}

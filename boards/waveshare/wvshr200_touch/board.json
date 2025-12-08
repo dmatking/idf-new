@@ -1,0 +1,12 @@
+{
+  "display_name": "Waveshare ESP32-S3 Touch LCD 2.0\"",
+  "panel": "ST7789",
+  "has_touch": true,
+  "screen": {
+    "size_inches": 2.0,
+    "resolution": "240x320",
+    "technology": "IPS",
+    "shape": "rect"
+  },
+  "features": ["ips", "spi"]
+}

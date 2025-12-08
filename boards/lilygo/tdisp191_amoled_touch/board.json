@@ -1,0 +1,12 @@
+{
+  "display_name": "LilyGO T-Display S3 AMOLED Touch (1.91\")",
+  "panel": "RM67162",
+  "has_touch": true,
+  "screen": {
+    "size_inches": 1.91,
+    "resolution": "536x240",
+    "technology": "AMOLED",
+    "shape": "rect"
+  },
+  "features": ["amoled", "qspi"]
+}
