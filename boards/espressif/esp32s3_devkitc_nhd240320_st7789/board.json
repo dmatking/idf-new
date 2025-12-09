@@ -1,0 +1,12 @@
+{
+  "display_name": "ESP32-S3-DevKitC + Newhaven 2.4\" IPS (ST7789, i80)",
+  "panel": "ST7789",
+  "has_touch": false,
+  "screen": {
+    "size_inches": 2.4,
+    "resolution": "240x320",
+    "technology": "TFT IPS",
+    "shape": "rect"
+  },
+  "features": ["tft", "ips", "i80-8bit", "st7789"]
+}

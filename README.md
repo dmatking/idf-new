@@ -1,29 +1,3 @@
-
-#### Built using Python 3.13.5
-#### ESP-IDF verion 5.5.1
-
-## What has been completed:
- - Main CLI - invoke it from the repo root with `idf-new project_name --board generic` (or run `python -m idf_new_tool.idf_new.cli ...` during development)
- - Boards
-    - Generic ESP32 - very simple test that should work for almost any ESP32. Creates a FreeRTOS task and outputs a count to the serial console. No other peripherals are initialized. [Generic ESP32](boards/generic/README.md)
-    - `hackerbox/hb107_round128` — [HackerBox 107](boards/hackerbox/hb107_round128/README.md)
-    - `lilygo/tdisp191_amoled_touch` — [LilyGO T-Display S3 AMOLED Touch](boards/lilygo/tdisp191_amoled_touch/README.md)
-    - `waveshare/wvshr185_round` / `waveshare/wvshr185_round_touch` — [Waveshare 1.85" Round](boards/waveshare/wvshr185_round/README.md) and [Touch](boards/waveshare/wvshr185_round_touch/README.md)
-    - `waveshare/wvshr200_touch` — [Waveshare ESP32-S3 2" 240×320 Touch](boards/waveshare/wvshr200_touch/README.md) ([product page](https://www.waveshare.com/product/arduino/boards-kits/esp32-s3/esp32-s3-touch-lcd-2.htm))
-
-
-## Coming soon
-
- - Beginner's tutorial
- - Python installation improvements
-
-  - Boards
-     - Waveshare ESP32-P4 Smart 86 Box Development Board with 720x720 touch screen [ESP32-P4 Smart 86 Box](https://www.waveshare.com/product/arduino/boards-kits/esp32-p4/esp32-p4-wifi6-touch-lcd-4b.htm)
-     - Official Espressif ESP32-P4-Function-EV-Board with 1024x600 touch screen [ESP32-P4-Function-EV-Board](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32p4/esp32-p4-function-ev-board/user_guide.html)
-     - Official Espressif ESP32-S3-DevKitC-1 [ESP32-S3-DevKitC-1](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide_v1.1.html#getting-started)
-     - Various Lilygo dev boards [Lilygo](https://lilygo.cc/)
-
-
 # idf-new – ESP-IDF Project Generator
 
 **idf-new** is a modular project generator for ESP-IDF.  
@@ -185,6 +159,30 @@ ESP-IDF and its bundled third-party libraries are licensed separately under perm
 
 Enjoy building clean ESP-IDF projects! 🚀
 
+
+#### Built using Python 3.13.5
+#### ESP-IDF verion 5.5.1
+
+## What has been completed:
+ - Main CLI - invoke it from the repo root with `idf-new project_name --board generic` (or run `python -m idf_new_tool.idf_new.cli ...` during development)
+ - Boards
+    - Generic ESP32 - very simple test that should work for almost any ESP32. Creates a FreeRTOS task and outputs a count to the serial console. No other peripherals are initialized. [Generic ESP32](boards/generic/README.md)
+    - `hackerbox/hb107_round128` — [HackerBox 107](boards/hackerbox/hb107_round128/README.md)
+    - `lilygo/tdisp191_amoled_touch` — [LilyGO T-Display S3 AMOLED Touch](boards/lilygo/tdisp191_amoled_touch/README.md)
+    - `waveshare/wvshr185_round` / `waveshare/wvshr185_round_touch` — [Waveshare 1.85" Round](boards/waveshare/wvshr185_round/README.md) and [Touch](boards/waveshare/wvshr185_round_touch/README.md)
+    - `waveshare/wvshr200_touch` — [Waveshare ESP32-S3 2" 240×320 Touch](boards/waveshare/wvshr200_touch/README.md) ([product page](https://www.waveshare.com/product/arduino/boards-kits/esp32-s3/esp32-s3-touch-lcd-2.htm))
+
+
+## Coming soon
+
+ - Beginner's tutorial
+ - Python installation improvements
+
+  - Boards
+     - Waveshare ESP32-P4 Smart 86 Box Development Board with 720x720 touch screen [ESP32-P4 Smart 86 Box](https://www.waveshare.com/product/arduino/boards-kits/esp32-p4/esp32-p4-wifi6-touch-lcd-4b.htm)
+     - Official Espressif ESP32-P4-Function-EV-Board with 1024x600 touch screen [ESP32-P4-Function-EV-Board](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32p4/esp32-p4-function-ev-board/user_guide.html)
+     - Official Espressif ESP32-S3-DevKitC-1 [ESP32-S3-DevKitC-1](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide_v1.1.html#getting-started)
+     - Various Lilygo dev boards [Lilygo](https://lilygo.cc/)
 
 
 
