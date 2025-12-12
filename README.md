@@ -133,14 +133,21 @@ You can now use `--<name>` in the generator.
 
 ---
 
-## 🔧 Installation & Usage - This has not been tested. dmk
+## 🔧 Installation & Usage
+
+Recommended (from repo root):
 
 ```bash
-cd idf_new_tool
 pip install -e .
 ```
 
-Then:
+Alternatively (from repo root):
+
+```bash
+pip install -e ./idf_new_tool
+```
+
+Then run:
 
 ```bash
 idf-new <project_name> --board <board_id> [--gps] [--lvgl]

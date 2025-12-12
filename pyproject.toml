@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "idf-new"
 version = "0.1.0"
 description = "idf-new project generator for ESP-IDF"
+readme = "README.md"
 authors = [{ name = "David M. King" }]
 license = "Apache-2.0"
 requires-python = ">=3.11"
@@ -15,4 +16,4 @@ dependencies = []
 idf-new = "idf_new.cli:main"
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["idf_new_tool"]
