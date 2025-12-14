@@ -17,3 +17,4 @@ __pycache__/
 temp/
 boards/lilygo/tdisp191_amoled_touch/vendor/
 idf_new_tool/idf_new.egg-info/
+LilyGo-Display-IDF/

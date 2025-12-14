@@ -1,0 +1,12 @@
+{
+  "display_name": "LilyGO T4 S3 AMOLED Touch (2.41\")",
+  "panel": "RM690B0",
+  "has_touch": true,
+  "screen": {
+    "size_inches": 2.41,
+    "resolution": "600x450",
+    "technology": "AMOLED",
+    "shape": "rect"
+  },
+  "features": ["amoled", "qspi", "touch"]
+}

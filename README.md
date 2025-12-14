@@ -176,6 +176,7 @@ Enjoy building clean ESP-IDF projects! 🚀
     - Generic ESP32 - very simple test that should work for almost any ESP32. Creates a FreeRTOS task and outputs a count to the serial console. No other peripherals are initialized. [Generic ESP32](boards/generic/README.md)
     - `hackerbox/hb107_round128` — [HackerBox 107](boards/hackerbox/hb107_round128/README.md)
     - `lilygo/tdisp191_amoled_touch` — [LilyGO T-Display S3 AMOLED Touch](boards/lilygo/tdisp191_amoled_touch/README.md)
+   - `lilygo/t4s3_amoled_touch` — [LilyGO T4 S3 AMOLED Touch 2.41"](boards/lilygo/t4s3_amoled_touch/README.md)
     - `waveshare/wvshr185_round` / `waveshare/wvshr185_round_touch` — [Waveshare 1.85" Round](boards/waveshare/wvshr185_round/README.md) and [Touch](boards/waveshare/wvshr185_round_touch/README.md)
     - `waveshare/wvshr200_touch` — [Waveshare ESP32-S3 2" 240×320 Touch](boards/waveshare/wvshr200_touch/README.md) ([product page](https://www.waveshare.com/product/arduino/boards-kits/esp32-s3/esp32-s3-touch-lcd-2.htm))
 
