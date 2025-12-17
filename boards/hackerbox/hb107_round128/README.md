@@ -3,17 +3,17 @@
 [Goto Home](/README.md)
 
 A compact, high-quality circular ESP32 board included with **HackerBox #0107**.
-Features a GC9A01 TFT header, micro-SD slot, FPC connector, and a very unusual **true hardware power switch**.
+Features a GC9A01 TFT header, micro-SD slot, FPC connector, and a **true hardware power switch**.
 
-This board is a bit of a unicorn. It came with HackerBox #0107 which at the time of this writing *2025-11-30* is still available for sale on their website. [HackerBox #0107](https://hackerboxes.com/products/hackerbox-0107-dock)
+This board came with HackerBox #0107 which at the time of this writing *2025-11-30* is still available for sale on their website. [HackerBox #0107](https://hackerboxes.com/products/hackerbox-0107-dock)
 
-There is no indication of the manufacturer on the board or in the docs, so there may or may not be examples of this board in the wild beyond the HackerBox offering. If you know anything about the origin of this board, please let me know.
+Others can be found on AliExpress and other sites that are similar if not the same. Some have different features than the hackerbox example. [AliExpress Generic 1.28" Round](https://www.aliexpress.us/item/3256804725289745.html?spm=a2g0o.productlist.main.5.4f8c58c52EKvhF&algo_pvid=6e276ae7-904b-4014-948d-63cae68be47a&algo_exp_id=6e276ae7-904b-4014-948d-63cae68be47a-4&pdp_ext_f=%7B%22order%22%3A%22321%22%2C%22eval%22%3A%221%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21USD%216.45%214.13%21%21%216.45%214.13%21%40210318a717659449976692215e5d1e%2112000032757861044%21sea%21US%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A148be668%3Bm03_new_user%3A-29895&curPageLogUid=WKOaUjw7HsqM&utparam-url=scene%3Asearch%7Cquery_from%3A%7Cx_object_id%3A1005004911604497%7C_p_origin_prod%3A)
 
 ![Board Photo](images/hackerbox107-1.28.webp)
 
 ---
 
-## Board Identification
+## Board Identification for my version
 
 - **MCU:** ESP32 (dual-core Xtensa)
 - **Board shape:** Circular PCB
@@ -24,8 +24,6 @@ There is no indication of the manufacturer on the board or in the docs, so there
 - **LEDs:**
   - **Red LED** — Power switch indicator
   - **Green LED** — USB power present
-
-This board is **not** a generic AliExpress part — it is cleanly laid out, well-made, and uses quality components.
 
 ---
 
@@ -119,7 +117,7 @@ If flashing fails, ensure:
 ## Verified Working
 
 - [x] USB power + power button
-- [ ] UART0 over USB-C
+- [x] UART0 over USB-C
 - [x] GC9A01 round TFT
 - [ ] SD card (not tested)
 - [ ] GPIO buttons (IO19, IO4)
