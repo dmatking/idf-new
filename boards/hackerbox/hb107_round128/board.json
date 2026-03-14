@@ -12,5 +12,10 @@
     "round",
     "gc9a01",
     "tft"
+  ],
+  "board_features": [
+    "tf_card",
+    "i2c_header",
+    "uart_header"
   ]
 }

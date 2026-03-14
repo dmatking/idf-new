@@ -18,5 +18,6 @@ temp/
 gen_*/
 sample_*/
 managed_components/
+test/
 boards/lilygo/tdisp191_amoled_touch/vendor/
 idf_new_tool/idf_new.egg-info/

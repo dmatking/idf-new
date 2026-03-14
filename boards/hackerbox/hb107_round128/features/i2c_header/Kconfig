@@ -1,0 +1,14 @@
+menu "I2C Header"
+
+    config I2C_HEADER_PORT
+        int "I2C port number"
+        default 0
+        range 0 1
+
+    config I2C_HEADER_CLK_HZ
+        int "Clock speed (Hz)"
+        default 400000
+        help
+            Standard: 100000, Fast: 400000
+
+endmenu

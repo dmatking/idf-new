@@ -1,0 +1,12 @@
+menu "UART Header"
+
+    config UART_HEADER_PORT
+        int "UART port number"
+        default 1
+        range 0 2
+
+    config UART_HEADER_BAUD
+        int "Baud rate"
+        default 115200
+
+endmenu

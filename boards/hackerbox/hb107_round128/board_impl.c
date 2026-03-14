@@ -9,13 +9,14 @@
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_gc9a01.h"
 
+#include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 // --- HARDWARE CONFIGURATION (Plain ESP32-D0WD) ---
 #define LCD_HOST        SPI2_HOST
 
-#define PIN_NUM_MISO    -1         // Not used for LCD
+#define PIN_NUM_MISO    2          // IO02 — shared with SD card DATA0
 #define PIN_NUM_CLK     14         // SCK
 #define PIN_NUM_MOSI    15         // MOSI
 #define PIN_NUM_CS      5          // CS
@@ -102,8 +103,20 @@ void board_init(void)
     ESP_ERROR_CHECK(esp_lcd_panel_init(panel));
     ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel, true, false));
     ESP_ERROR_CHECK(esp_lcd_panel_invert_color(panel, true));
+    ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel, true));
 
-    ESP_LOGI(TAG, "WHackerBox 107 1.28 Round ESP32-D0WD init done.");
+    // Enable backlight
+    gpio_config_t bl_cfg = {
+        .pin_bit_mask = 1ULL << PIN_NUM_BK_LIGHT,
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    ESP_ERROR_CHECK(gpio_config(&bl_cfg));
+    gpio_set_level(PIN_NUM_BK_LIGHT, 1);
+
+    ESP_LOGI(TAG, "HackerBox 107 1.28 Round ESP32-D0WD init done.");
 }
 
 const char *board_get_name(void)
@@ -116,31 +129,31 @@ bool board_has_lcd(void)
     return panel != NULL;
 }
 
+static void lcd_sanity_task(void *arg)
+{
+    static const uint16_t colors[] = {
+        0xF800, // red
+        0x07E0, // green
+        0x001F, // blue
+        0xFFFF, // white
+        0x0000, // black
+    };
+    const int n = sizeof(colors) / sizeof(colors[0]);
+    int i = 0;
+
+    while (1) {
+        fill_screen(colors[i]);
+        i = (i + 1) % n;
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+
 void board_lcd_sanity_test(void)
 {
     if (!panel) {
         ESP_LOGW(TAG, "Panel not initialized; skipping sanity test.");
         return;
     }
-
-    ESP_LOGI(TAG, "Running LCD sanity test...");
-
-    uint16_t red   = 0xF800;
-    uint16_t green = 0x07E0;
-    uint16_t blue  = 0x001F;
-    uint16_t black = 0x0000;
-
-    esp_lcd_panel_disp_on_off(panel, true);
-
-    fill_screen(red);
-    vTaskDelay(pdMS_TO_TICKS(500));
-
-    fill_screen(green);
-    vTaskDelay(pdMS_TO_TICKS(500));
-
-    fill_screen(blue);
-    vTaskDelay(pdMS_TO_TICKS(500));
-
-    fill_screen(black);
-    vTaskDelay(pdMS_TO_TICKS(500));
+    ESP_LOGI(TAG, "Starting LCD sanity task...");
+    xTaskCreate(lcd_sanity_task, "lcd_sanity", 4096, NULL, 4, NULL);
 }
