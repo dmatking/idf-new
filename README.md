@@ -254,4 +254,4 @@ Built with:
 - ESP-IDF 5.5.1
 - [Claude Code](https://claude.ai/claude-code)
 
-<center> This repository was automatically pushed from my self-hosted Forgejo server. Give it a try <a href="https://forgejo.org/">Forgejo</a>. </center>
+<center> This repository was automatically pushed to GitHub from my self-hosted <a href="https://forgejo.org/">Forgejo</a> server. </center>
