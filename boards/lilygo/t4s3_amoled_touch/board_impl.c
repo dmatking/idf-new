@@ -1,215 +1,196 @@
-// Copyright 2025 David M. King
-// SPDX-License-Identifier: Apache-2.0
-
-#include "board_interface.h"
-
-#include <string.h>
-
+/**
+ * @file      amoled_driver.c
+ * @author    Lewis He (lewishe@outlook.com)
+ * @license   MIT
+ * @copyright Copyright (c) 2024  Shenzhen Xinyuan Electronic Technology Co., Ltd
+ * @date      2024-01-07
+ *
+ */
+#include <sdkconfig.h>
+#include <driver/spi_master.h>
+#include <sys/cdefs.h>
 #include "driver/gpio.h"
-#include "driver/spi_master.h"
+#include "product_pins.h"
 #include "esp_log.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+#include <stdlib.h>
+#include <string.h>
+#include "board_interface.h"
+#include "i2c_driver.h"
+#include "power_driver.h"
+#include "touch_min.h"
 
-#define BOARD_NAME "LilyGO T4 S3 AMOLED Touch 2.41\""
+#if defined(CONFIG_LILYGO_T_AMOLED_LITE_147) || \
+    defined(CONFIG_LILYGO_T_DISPLAY_S3_AMOLED) || \
+    defined(CONFIG_LILYGO_T_DISPLAY_S3_AMOLED_TOUCH) || \
+    defined(CONFIG_LILYGO_T4_S3_241)
 
-#define LCD_HOST SPI3_HOST
-#define LCD_H_RES 600
-#define LCD_V_RES 450
+#define SEND_BUF_SIZE           (16384)
+#define DEFAULT_SPI_HANDLER     (SPI3_HOST)
 
-// QSPI pins from LilyGo product_pins.h (CONFIG_LILYGO_T4_S3_241)
-#define PIN_LCD_CS    11
-#define PIN_LCD_SCK   15
-#define PIN_LCD_D0    14
-#define PIN_LCD_D1    10
-#define PIN_LCD_D2    16
-#define PIN_LCD_D3    12
-#define PIN_LCD_RST   13
-#define PIN_LCD_TE    -1
-#define PIN_LCD_EN    9
+static const char *TAG = "AMOLED";
+static uint16_t *pBuffer = NULL;
+static spi_device_handle_t spi = NULL;
+static uint8_t _brightness;
 
-#define LCD_SPI_FREQ_HZ (24 * 1000 * 1000)
-#define LCD_SEND_CHUNK_PIXELS 16384
+static void display_init(void);
+static uint16_t amoled_width(void);
+static uint16_t amoled_height(void);
+static void amoled_set_window(uint16_t xs, uint16_t ys, uint16_t xe, uint16_t ye);
+static void amoled_push_buffer(uint16_t *data, uint32_t len);
 
-typedef struct {
-    uint32_t addr;
-    uint8_t param[20];
-    uint32_t len;
-} lcd_cmd_t;
+#ifndef LOW
+#define LOW 0
+#endif  // panel driver block
 
-static const lcd_cmd_t s_rm690b0_init[] = {
-    {0xFE00, {0x20}, 0x01},
-    {0x2600, {0x0A}, 0x01},
-    {0x2400, {0x80}, 0x01},
-    {0x5A00, {0x51}, 0x01},
-    {0x5B00, {0x2E}, 0x01},
-    {0xFE00, {0x00}, 0x01},
-    {0x3A00, {0x55}, 0x01},
-    {0xC200, {0x00}, 0x21},
-    {0x3500, {0x00}, 0x01},
-    {0x5100, {0x00}, 0x01},
-    {0x1100, {0x00}, 0x80},
-    {0x2900, {0x00}, 0x20},
-    {0x5100, {0xFF}, 0x01},
-};
-
-static spi_device_handle_t s_spi = NULL;
-static bool s_lcd_ready = false;
-static uint16_t s_tx_buf[LCD_SEND_CHUNK_PIXELS];
-static const char *TAG = "BOARD_T4S3_AMOLED";
-
-static inline void panel_select(void)
+// --- idf-new board_interface shim ---
+const char *board_get_name(void)
 {
-    gpio_set_level(PIN_LCD_CS, 0);
+    return "LilyGO T4 S3 AMOLED Touch 2.41\"";
 }
 
-static inline void panel_deselect(void)
+bool board_has_lcd(void)
 {
-    gpio_set_level(PIN_LCD_CS, 1);
+    return true;
 }
 
-static void amoled_write_cmd(uint32_t cmd, const uint8_t *data, uint32_t length)
+void board_init(void)
 {
-    spi_transaction_t t = {0};
-    t.flags = SPI_TRANS_MULTILINE_CMD | SPI_TRANS_MULTILINE_ADDR;
-    t.cmd = 0x02;
-    t.addr = cmd;
-    t.length = length * 8;
-    t.tx_buffer = data;
-    panel_select();
-    ESP_ERROR_CHECK(spi_device_polling_transmit(s_spi, &t));
-    panel_deselect();
-}
-
-static void amoled_set_window(uint16_t xs, uint16_t ys, uint16_t xe, uint16_t ye)
-{
-    // Raw panel addressing with +16 column offset (per T4-S3)
-    uint16_t xs_o = xs + 16;
-    uint16_t xe_o = xe + 16;
-
-    const uint8_t caset[] = {
-        (uint8_t)((xs_o >> 8) & 0xFF), (uint8_t)(xs_o & 0xFF),
-        (uint8_t)((xe_o >> 8) & 0xFF), (uint8_t)(xe_o & 0xFF),
-    };
-    const uint8_t raset[] = {
-        (uint8_t)((ys >> 8) & 0xFF), (uint8_t)(ys & 0xFF),
-        (uint8_t)((ye >> 8) & 0xFF), (uint8_t)(ye & 0xFF),
-    };
-
-    amoled_write_cmd(0x2A00, caset, sizeof(caset));
-    amoled_write_cmd(0x2B00, raset, sizeof(raset));
-    amoled_write_cmd(0x2C00, NULL, 0);
-}
-
-// Forward declaration
-static void amoled_push_buffer(const uint16_t *data, size_t pixel_count);
-
-static void draw_block_rotated(uint16_t lx, uint16_t ly, uint16_t w, uint16_t h, uint16_t color)
-{
-    // Logical coords (lx,ly) use LVGL-like space: lx in [0..LCD_V_RES), ly in [0..LCD_H_RES)
-    uint16_t px = (LCD_H_RES - (ly + h));
-    uint16_t py = lx;
-    if (px > LCD_H_RES - 1) return;
-    if (py > LCD_V_RES - 1) return;
-    uint16_t pxe = px + h - 1;
-    uint16_t pye = py + w - 1;
-    if (pxe > LCD_H_RES - 1) pxe = LCD_H_RES - 1;
-    if (pye > LCD_V_RES - 1) pye = LCD_V_RES - 1;
-
-    static uint16_t block[50*50];
-    uint32_t area = (uint32_t)(pxe - px + 1) * (uint32_t)(pye - py + 1);
-    uint32_t chunk = sizeof(block) / sizeof(block[0]);
-    for (uint32_t i = 0; i < chunk; ++i) block[i] = color;
-
-    amoled_set_window(px, py, pxe, pye);
-    uint32_t remaining = area;
-    while (remaining) {
-        uint32_t send = remaining > chunk ? chunk : remaining;
-        amoled_push_buffer(block, send);
-        remaining -= send;
+    ESP_ERROR_CHECK(i2c_driver_init());
+    touch_min_init();
+    if (!power_driver_init()) {
+        ESP_LOGW(TAG, "Power init failed, continuing");
     }
+    display_init();
 }
 
-static void amoled_push_buffer(const uint16_t *data, size_t pixel_count)
+void board_lcd_sanity_test(void)
 {
-    if (!s_spi || !pixel_count) {
-        return;
-    }
-    bool first = true;
-    size_t remaining = pixel_count;
-    const uint16_t *p = data;
-
-    panel_select();
-    while (remaining) {
-        size_t chunk = remaining;
-        if (chunk > LCD_SEND_CHUNK_PIXELS) {
-            chunk = LCD_SEND_CHUNK_PIXELS;
+    uint16_t colors[] = {0xF800, 0x07E0, 0x001F, 0xFFFF, 0x0000};
+    for (int i = 0; i < 5; ++i) {
+        uint32_t w = amoled_width();
+        uint32_t h = amoled_height();
+        static uint16_t line[600];
+        for (uint32_t x = 0; x < w && x < (sizeof(line) / sizeof(line[0])); ++x) {
+            line[x] = colors[i];
         }
-        memcpy(s_tx_buf, p, chunk * sizeof(uint16_t));
-
-        spi_transaction_ext_t t = {0};
-        if (first) {
-            t.base.flags = SPI_TRANS_MODE_QIO;
-            t.base.cmd = 0x32;
-            t.base.addr = 0x002C00;
-            first = false;
-        } else {
-            t.base.flags = SPI_TRANS_MODE_QIO | SPI_TRANS_VARIABLE_CMD |
-                       SPI_TRANS_VARIABLE_ADDR | SPI_TRANS_VARIABLE_DUMMY;
+        for (uint32_t y = 0; y < h; ++y) {
+            amoled_set_window(0, y, w - 1, y);
+            amoled_push_buffer(line, w);
         }
-        t.base.tx_buffer = s_tx_buf;
-        t.base.length = chunk * 16;
-        ESP_ERROR_CHECK(spi_device_polling_transmit(s_spi, (spi_transaction_t *)&t));
-        p += chunk;
-        remaining -= chunk;
+        vTaskDelay(pdMS_TO_TICKS(200));
     }
-    panel_deselect();
+}
+#ifndef HIGH
+#define HIGH 1
+#endif
+#ifndef OUTPUT
+#define OUTPUT GPIO_MODE_OUTPUT
+#endif
+#ifndef INPUT
+#define INPUT   GPIO_MODE_INPUT
+#endif
+
+
+void amoled_write_cmd(uint32_t cmd, uint8_t *pdat, uint32_t lenght);
+
+static bool __init_qspi_bus();
+
+#define delay(ms)   vTaskDelay(ms / portTICK_PERIOD_MS)
+
+static void pinMode(uint32_t gpio, uint8_t mode)
+{
+    gpio_config_t config = {0};
+    config.pin_bit_mask = 1ULL << gpio;
+    config.mode = mode == INPUT  ? GPIO_MODE_INPUT : mode == OUTPUT ? GPIO_MODE_OUTPUT : GPIO_MODE_DISABLE;
+    config.pull_up_en = GPIO_PULLUP_DISABLE;
+    config.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    config.intr_type = GPIO_INTR_DISABLE;
+    ESP_ERROR_CHECK(gpio_config(&config));
 }
 
-static void panel_reset(void)
+void digitalWrite(uint32_t gpio, uint8_t level)
 {
-    vTaskDelay(pdMS_TO_TICKS(10));
-    gpio_set_level(PIN_LCD_RST, 1);
-    vTaskDelay(pdMS_TO_TICKS(20));
-    gpio_set_level(PIN_LCD_RST, 0);
-    vTaskDelay(pdMS_TO_TICKS(30));
-    gpio_set_level(PIN_LCD_RST, 1);
-    vTaskDelay(pdMS_TO_TICKS(20));
+    gpio_set_level((gpio_num_t )gpio, level);
 }
 
-static esp_err_t init_display(void)
+static void inline setCS()
 {
-    gpio_config_t out_cfg = {
-        .pin_bit_mask = (1ULL << PIN_LCD_CS) | (1ULL << PIN_LCD_RST),
-        .mode = GPIO_MODE_OUTPUT,
-        .pull_up_en = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE,
-    };
-    ESP_ERROR_CHECK(gpio_config(&out_cfg));
-    gpio_set_level(PIN_LCD_CS, 1);
+    digitalWrite(BOARD_DISP_CS, LOW);
+}
 
-    if (PIN_LCD_EN >= 0) {
-        gpio_config_t en_cfg = out_cfg;
-        en_cfg.pin_bit_mask = 1ULL << PIN_LCD_EN;
-        ESP_ERROR_CHECK(gpio_config(&en_cfg));
-        gpio_set_level(PIN_LCD_EN, 1);
+static void inline clrCS()
+{
+    digitalWrite(BOARD_DISP_CS, HIGH);
+}
+
+void display_init()
+{
+    __init_qspi_bus();
+}
+
+static bool __init_qspi_bus()
+{
+#if CONFIG_LILYGO_T_AMOLED_LITE_147
+    pBuffer = (uint16_t *)heap_caps_malloc(AMOLED_WIDTH * AMOLED_HEIGHT * sizeof(uint16_t), MALLOC_CAP_DMA);
+    if (!pBuffer) {
+        ESP_LOGE(TAG, "ERROR:No memory use .."); return false;
+    }
+#endif
+
+#if defined(CONFIG_LILYGO_T_AMOLED_LITE_147)
+    ESP_LOGI(TAG, "============LILYGO_T_AMOLED_LITE_147============");
+#elif defined(CONFIG_LILYGO_T_DISPLAY_S3_AMOLED)
+    ESP_LOGI(TAG, "============LILYGO_T_DISPLAY_S3_AMOLED============");
+#elif defined(CONFIG_LILYGO_T_DISPLAY_S3_AMOLED_TOUCH)
+    ESP_LOGI(TAG, "============T_DISPLAY_S3_AMOLED_TOUCH============");
+#elif defined(CONFIG_LILYGO_T4_S3_241)
+    ESP_LOGI(TAG, "============LILYGO_T4_S3_241============");
+#endif
+
+    ESP_LOGI(TAG, "=====CONFIGURE======");
+    ESP_LOGI(TAG, "RST    > %d", BOARD_DISP_RESET);
+    ESP_LOGI(TAG, "CS     > %d", BOARD_DISP_CS);
+    ESP_LOGI(TAG, "SCK    > %d", BOARD_DISP_SCK);
+    ESP_LOGI(TAG, "D0     > %d", BOARD_DISP_DATA0);
+    ESP_LOGI(TAG, "D1     > %d", BOARD_DISP_DATA1);
+    ESP_LOGI(TAG, "D2     > %d", BOARD_DISP_DATA2);
+    ESP_LOGI(TAG, "D3     > %d", BOARD_DISP_DATA3);
+    ESP_LOGI(TAG, "TE     > %d", BOARD_DISP_TE);
+    ESP_LOGI(TAG, "Freq   > %d", DEFAULT_SCK_SPEED);
+    ESP_LOGI(TAG, "Power  > %d", AMOLED_EN_PIN);
+    ESP_LOGI(TAG, "==================");
+
+    pinMode(BOARD_DISP_RESET, OUTPUT);
+    pinMode(BOARD_DISP_CS, OUTPUT);
+
+    if (BOARD_DISP_TE != -1) {
+        //
     }
 
-    vTaskDelay(pdMS_TO_TICKS(120));
-    panel_reset();
+    if (AMOLED_EN_PIN != -1) {
+        pinMode(AMOLED_EN_PIN, OUTPUT);
+        digitalWrite(AMOLED_EN_PIN, HIGH);
+    }
+
+    //reset display
+    digitalWrite(BOARD_DISP_RESET, HIGH);
+    delay(200);
+    digitalWrite(BOARD_DISP_RESET, LOW);
+    delay(300);
+    digitalWrite(BOARD_DISP_RESET, HIGH);
+    delay(200);
 
     spi_bus_config_t buscfg = {
-        .data0_io_num = PIN_LCD_D0,
-        .data1_io_num = PIN_LCD_D1,
-        .sclk_io_num = PIN_LCD_SCK,
-        .data2_io_num = PIN_LCD_D2,
-        .data3_io_num = PIN_LCD_D3,
-        .data4_io_num = -1,
-        .data5_io_num = -1,
-        .data6_io_num = -1,
-        .data7_io_num = -1,
-        .max_transfer_sz = (LCD_SEND_CHUNK_PIXELS * 16) + 8,
+        .data0_io_num = BOARD_DISP_DATA0,
+        .data1_io_num = BOARD_DISP_DATA1,
+        .sclk_io_num = BOARD_DISP_SCK,
+        .data2_io_num = BOARD_DISP_DATA2,
+        .data3_io_num = BOARD_DISP_DATA3,
+        .data4_io_num = BOARD_NONE_PIN,
+        .data5_io_num = BOARD_NONE_PIN,
+        .data6_io_num = BOARD_NONE_PIN,
+        .data7_io_num = BOARD_NONE_PIN,
+        .max_transfer_sz = (SEND_BUF_SIZE * 16) + 8,
         .flags = SPICOMMON_BUSFLAG_MASTER | SPICOMMON_BUSFLAG_GPIO_PINS,
     };
 
@@ -217,83 +198,184 @@ static esp_err_t init_display(void)
         .command_bits = 8,
         .address_bits = 24,
         .mode = 0,
-        .clock_speed_hz = LCD_SPI_FREQ_HZ,
+        .clock_speed_hz = DEFAULT_SCK_SPEED,
         .spics_io_num = -1,
         .flags = SPI_DEVICE_HALFDUPLEX,
-        .queue_size = 10,
+        .queue_size = 17,
     };
-
-    ESP_ERROR_CHECK(spi_bus_initialize(LCD_HOST, &buscfg, SPI_DMA_CH_AUTO));
-    ESP_ERROR_CHECK(spi_bus_add_device(LCD_HOST, &devcfg, &s_spi));
-
-    for (int retry = 0; retry < 2; ++retry) {
-        for (size_t i = 0; i < (sizeof(s_rm690b0_init) / sizeof(s_rm690b0_init[0])); ++i) {
-            const lcd_cmd_t *cmd = &s_rm690b0_init[i];
-            uint32_t payload = cmd->len & 0x1F;
-            if (payload > 0) {
-                amoled_write_cmd(cmd->addr, cmd->param, payload);
-            } else {
-                amoled_write_cmd(cmd->addr, NULL, 0);
+    esp_err_t ret = spi_bus_initialize(DEFAULT_SPI_HANDLER, &buscfg, SPI_DMA_CH_AUTO);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "spi_bus_initialize fail!");
+        return false;
+    }
+    ret = spi_bus_add_device(DEFAULT_SPI_HANDLER, &devcfg, &spi);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "spi_bus_add_device fail!");
+        return false;
+    }
+    // prevent initialization failure
+    int retry = 2;
+    while (retry--) {
+        const lcd_cmd_t *t = AMOLED_INIT_CMD;
+        for (uint32_t i = 0; i < AMOLED_INIT_CMD_LEN; i++) {
+            amoled_write_cmd(t[i].addr, (uint8_t *)t[i].param, t[i].len & 0x1F);
+            if (t[i].len & 0x80) {
+                delay(120);
             }
-            if (cmd->len & 0x80) {
-                vTaskDelay(pdMS_TO_TICKS(120));
-            } else if (cmd->len & 0x20) {
-                vTaskDelay(pdMS_TO_TICKS(10));
+            if (t[i].len & 0x20) {
+                delay(10);
             }
         }
     }
-
-    s_lcd_ready = true;
-    ESP_LOGI(TAG, "AMOLED ready (%dx%d)", LCD_H_RES, LCD_V_RES);
-    return ESP_OK;
+    return true;
 }
 
-static void fill_screen(uint16_t color)
+uint16_t  amoled_width()
 {
-    if (!s_lcd_ready) {
-        return;
+    return AMOLED_WIDTH;
+}
+
+uint16_t  amoled_height()
+{
+    return AMOLED_HEIGHT;
+}
+
+void amoled_write_cmd(uint32_t cmd, uint8_t *pdat, uint32_t lenght)
+{
+    setCS();
+    spi_transaction_t t;
+    memset(&t, 0, sizeof(t));
+    t.flags = (SPI_TRANS_MULTILINE_CMD | SPI_TRANS_MULTILINE_ADDR);
+    t.cmd = 0x02;
+    t.addr = cmd;
+    if (lenght != 0) {
+        t.tx_buffer = pdat;
+        t.length = 8 * lenght;
+    } else {
+        t.tx_buffer = NULL;
+        t.length = 0;
     }
+    spi_device_polling_transmit(spi, &t);
+    clrCS();
+}
 
-    static uint16_t line[LCD_H_RES];
-    for (int x = 0; x < LCD_H_RES; ++x) {
-        line[x] = color;
+void amoled_set_brightness(uint8_t level)
+{
+    _brightness = level;
+    lcd_cmd_t t = {0x5100, {level}, 0x01};
+    amoled_write_cmd(t.addr, t.param, t.len);
+}
+
+uint8_t amoled_get_brightness()
+{
+    return _brightness;
+}
+
+void amoled_set_window(uint16_t xs, uint16_t ys, uint16_t xe, uint16_t ye)
+{
+
+    lcd_cmd_t t[3] = {
+        {
+            0x2A00, {
+                (uint8_t)((xs >> 8) & 0xFF),
+                (uint8_t)(xs & 0xFF),
+                (uint8_t)((xe >> 8) & 0xFF),
+                (uint8_t)(xe & 0xFF)
+            }, 0x04
+        },
+        {
+            0x2B00, {
+                (uint8_t)((ys >> 8) & 0xFF),
+                (uint8_t)(ys & 0xFF),
+                (uint8_t)((ye >> 8) & 0xFF),
+                (uint8_t)(ye & 0xFF)
+            }, 0x04
+        },
+        {
+            0x2C00, {
+                0x00
+            }, 0x00
+        },
+    };
+
+    for (uint32_t i = 0; i < 3; i++) {
+        amoled_write_cmd(t[i].addr, t[i].param, t[i].len);
     }
+}
 
-    for (int y = 0; y < LCD_V_RES; ++y) {
-        amoled_set_window(0, y, LCD_H_RES - 1, y);
-        amoled_push_buffer(line, LCD_H_RES);
+// Push (aka write pixel) colours to the TFT (use amoled_set_window() first)
+void amoled_push_buffer(uint16_t *data, uint32_t len)
+{
+    bool first_send = true;
+    uint16_t *p = data;
+    assert(p);
+    assert(spi);
+    setCS();
+    do {
+        size_t chunk_size = len;
+        spi_transaction_ext_t t = {0};
+        memset(&t, 0, sizeof(t));
+        if (first_send) {
+            t.base.flags = SPI_TRANS_MODE_QIO;
+            t.base.cmd = 0x32 ;
+            t.base.addr = 0x002C00;
+            first_send = 0;
+        } else {
+            t.base.flags = SPI_TRANS_MODE_QIO | SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR | SPI_TRANS_VARIABLE_DUMMY;
+            t.command_bits = 0;
+            t.address_bits = 0;
+            t.dummy_bits = 0;
+        }
+        if (chunk_size > SEND_BUF_SIZE) {
+            chunk_size = SEND_BUF_SIZE;
+        }
+        t.base.tx_buffer = p;
+        t.base.length = chunk_size * 16;
+        spi_device_polling_transmit(spi, (spi_transaction_t *)&t);
+        len -= chunk_size;
+        p += chunk_size;
+    } while (len > 0);
+    clrCS();
+}
+
+void display_push_colors(uint16_t x, uint16_t y, uint16_t width, uint16_t hight, uint16_t *data)
+{
+
+    if (pBuffer) {
+        assert(pBuffer);
+        uint16_t _x = AMOLED_WIDTH - (y + hight);
+        uint16_t _y = x;
+        uint16_t _h = width;
+        uint16_t _w = hight;
+        uint16_t *p = data;
+        uint32_t cum = 0;
+        for (uint16_t j = 0; j < width; j++) {
+            for (uint16_t i = 0; i < hight; i++) {
+                pBuffer[cum] = ((uint16_t)p[width * (hight - i - 1) + j]);
+                cum++;
+            }
+        }
+        amoled_set_window(_x, _y, _x + _w - 1, _y + _h - 1);
+        amoled_push_buffer(pBuffer, width * hight);
+    } else {
+        amoled_set_window(x, y, x + width - 1, y + hight - 1);
+        amoled_push_buffer(data, width * hight);
     }
 }
 
-void board_init(void)
-{
-    ESP_LOGI(TAG, "%s init", BOARD_NAME);
-    ESP_ERROR_CHECK(init_display());
-    // Touch (CST226) not yet integrated via esp_lcd_touch in this repo
-}
 
-const char *board_get_name(void)
-{
-    return BOARD_NAME;
-}
+#endif
 
-bool board_has_lcd(void)
-{
-    return s_lcd_ready;
-}
 
-void board_lcd_sanity_test(void)
-{
-    if (!s_lcd_ready) {
-        ESP_LOGW(TAG, "Panel missing; skip sanity test");
-        return;
-    }
 
-    // Draw four white corner blocks in logical space and leave on screen
-    ESP_LOGI(TAG, "Draw rotated white corner blocks (no fullscreen)");
-    uint16_t w = 50, h = 50;
-    draw_block_rotated(0, 0, w, h, 0xFFFF);
-    draw_block_rotated(LCD_V_RES - w, 0, w, h, 0xFFFF);
-    draw_block_rotated(0, LCD_H_RES - h, w, h, 0xFFFF);
-    draw_block_rotated(LCD_V_RES - w, LCD_H_RES - h, w, h, 0xFFFF);
-}
+
+
+
+
+
+
+
+
+
+
+

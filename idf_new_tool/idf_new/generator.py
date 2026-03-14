@@ -41,7 +41,11 @@ class ProjectGenerator:
 		if not requested:
 			return
 
-		ctx = FeatureContext(project_dir=project.root, main_dir=project.main_dir)
+		ctx = FeatureContext(
+			project_dir=project.root,
+			main_dir=project.main_dir,
+			cmake_extra_path=project.main_dir / "main.cmake.extra",
+		)
 		for flag in requested:
 			try:
 				feature = get_feature(flag)
@@ -50,4 +54,3 @@ class ProjectGenerator:
 			feature.apply(ctx)
 # Copyright 2025 David M. King
 # SPDX-License-Identifier: Apache-2.0
-

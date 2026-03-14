@@ -9,7 +9,7 @@ description = "idf-new project generator for ESP-IDF"
 authors = [{ name = "David M. King" }]
 license = "Apache-2.0"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = ["PyYAML>=6.0"]
 
 [project.scripts]
 idf-new = "idf_new.cli:main"

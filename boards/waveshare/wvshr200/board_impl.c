@@ -4,12 +4,10 @@
 #include "board_interface.h"
 
 #include "driver/gpio.h"
-#include "driver/i2c.h"
 #include "driver/spi_master.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_vendor.h"
-#include "esp_lcd_touch_cst816s.h"
 #include "esp_log.h"
 
 #include "freertos/FreeRTOS.h"
@@ -29,14 +27,8 @@
 #define PIN_LCD_RST  -1
 #define PIN_LCD_BL   1
 
-#define PIN_TOUCH_SDA 48
-#define PIN_TOUCH_SCL 47
-#define TOUCH_I2C_PORT I2C_NUM_0
-
 static esp_lcd_panel_handle_t s_panel = NULL;
-static esp_lcd_touch_handle_t s_touch = NULL;
 static const char *TAG = "BOARD_WVSHR_2V0_T";
-static bool s_touch_task_started = false;
 
 static inline uint16_t swap_bytes_to_panel_color(uint16_t color)
 {
@@ -75,77 +67,9 @@ static void init_backlight(void)
 
 static void start_touch_logger(void);
 
-static void init_touch(void)
-{
-    i2c_config_t cfg = {
-        .mode = I2C_MODE_MASTER,
-        .sda_io_num = PIN_TOUCH_SDA,
-        .scl_io_num = PIN_TOUCH_SCL,
-        .sda_pullup_en = GPIO_PULLUP_ENABLE,
-        .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master.clk_speed = 400000,
-    };
-    ESP_ERROR_CHECK(i2c_param_config(TOUCH_I2C_PORT, &cfg));
-    ESP_ERROR_CHECK(i2c_driver_install(TOUCH_I2C_PORT, cfg.mode, 0, 0, 0));
-
-    esp_lcd_panel_io_handle_t tp_io = NULL;
-    esp_lcd_panel_io_i2c_config_t tp_io_cfg = ESP_LCD_TOUCH_IO_I2C_CST816S_CONFIG();
-    tp_io_cfg.scl_speed_hz = 0;  // legacy driver ignores this; must be 0 to avoid ESP_ERR_INVALID_ARG
-    ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c((esp_lcd_i2c_bus_handle_t)TOUCH_I2C_PORT, &tp_io_cfg, &tp_io));
-
-    esp_lcd_touch_config_t touch_cfg = {
-        .x_max = LCD_V_RES,
-        .y_max = LCD_H_RES,
-        .rst_gpio_num = -1,
-        .int_gpio_num = -1,
-        .flags = {
-            .swap_xy = 0,
-            .mirror_x = 0,
-            .mirror_y = 0,
-        },
-    };
-    ESP_ERROR_CHECK(esp_lcd_touch_new_i2c_cst816s(tp_io, &touch_cfg, &s_touch));
-    start_touch_logger();
-}
-
-static void touch_logger_task(void *arg)
-{
-    bool touching = false;
-    while (1) {
-        if (s_touch) {
-            esp_lcd_touch_point_data_t points_data[1] = {0};
-            uint8_t point_count = 0;
-            esp_lcd_touch_read_data(s_touch);
-            esp_err_t err = esp_lcd_touch_get_data(s_touch, points_data, &point_count, 1);
-            bool pressed = (err == ESP_OK) && (point_count > 0);
-            if (pressed) {
-                touching = true;
-                ESP_LOGI(TAG, "Touch (%u,%u)", (unsigned)points_data[0].x, (unsigned)points_data[0].y);
-            } else if (touching) {
-                touching = false;
-                ESP_LOGI(TAG, "Touch released");
-            }
-        }
-        vTaskDelay(pdMS_TO_TICKS(50));
-    }
-}
-
-static void start_touch_logger(void)
-{
-    if (s_touch_task_started) {
-        return;
-    }
-    BaseType_t ok = xTaskCreate(touch_logger_task, "TouchLogger2", 2048, NULL, 5, NULL);
-    if (ok == pdPASS) {
-        s_touch_task_started = true;
-    } else {
-        ESP_LOGW(TAG, "Failed to start touch logger task");
-    }
-}
-
 void board_init(void)
 {
-    ESP_LOGI(TAG, "%s init: ST7789 240x320 LCD + CST816 touch", BOARD_NAME);
+    ESP_LOGI(TAG, "%s init: ST7789 240x320 LCD (no touch)", BOARD_NAME);
     init_backlight();
 
     spi_bus_config_t buscfg = {
@@ -182,8 +106,6 @@ void board_init(void)
     ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(s_panel, false));
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(s_panel, true));
     ESP_ERROR_CHECK(esp_lcd_panel_invert_color(s_panel, true));
-
-    init_touch();
 
     ESP_LOGI(TAG, "%s init done", BOARD_NAME);
 }

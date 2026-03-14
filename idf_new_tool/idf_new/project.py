@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 import shutil
 
+from .manifest import merge_manifests
+
 
 @dataclass(slots=True)
 class Project:
@@ -70,10 +72,21 @@ def install_board(project: Project, board_dir: Path, board_id: str) -> Path:
 
 	manifest_src = board_dir / "idf_component.yml"
 	manifest_dst = project.main_dir / "idf_component.yml"
-	if manifest_src.exists():
-		shutil.copy2(manifest_src, manifest_dst)
+	merge_manifests(manifest_dst, manifest_src)
+
+	cmake_extra_src = board_dir / "main.cmake.extra"
+	cmake_extra_dst = project.main_dir / "main.cmake.extra"
+	if cmake_extra_src.exists():
+		content = cmake_extra_src.read_text(encoding="utf-8")
+		cmake_extra_dst.write_text(content, encoding="utf-8")
+
+	# Copy any extra C/C++/header sources so boards can bundle helpers
+	for pattern in ("*.c", "*.cpp", "*.h"):
+		for extra in board_dir.glob(pattern):
+			if extra == board_impl:
+				continue
+			project.copy_into_main(extra)
 
 	return destination
 # Copyright 2025 David M. King
 # SPDX-License-Identifier: Apache-2.0
-

@@ -16,9 +16,12 @@ The Generic ESP32 board target builds a minimal FreeRTOS-based project and shoul
 
 ```bash
 git clone https://github.com/dmatking/idf-new.git
-cd idf-new
-pip install -e .
+pipx install -e idf-new/idf_new_tool
 ```
+
+> **Why `pipx`?** idf-new is a CLI tool. `pipx` installs it in an isolated environment so its dependencies don't conflict with your other Python tools. If you don't have `pipx`: `pip install pipx`.
+>
+> The `-e` (editable) flag is required — idf-new reads `boards/`, `features/`, and `idf-templates/` directly from the repo checkout at runtime.
 
 Generate a project:
 
@@ -197,23 +200,22 @@ idf-new my_project --<name>
 
 ## 🔧 Installation Notes
 
-Recommended (from repo root):
+idf-new must be installed as an editable install from the repo checkout — it reads `boards/`, `features/`, and `idf-templates/` from the repo at runtime.
+
+**Recommended (pipx, isolated environment):**
 
 ```bash
-pip install -e .
+git clone https://github.com/dmatking/idf-new.git
+pipx install -e idf-new/idf_new_tool
 ```
 
-Alternatively:
+**Alternative (plain pip):**
 
 ```bash
-pip install -e ./idf_new_tool
+pip install -e idf-new/idf_new_tool
 ```
 
-During development, you may also run:
-
-```bash
-python -m idf_new_tool.idf_new.cli ...
-```
+**To update:** just `git pull` in the repo — no reinstall needed.
 
 ---
 

@@ -1,0 +1,2 @@
+set(EXTRA_SRCS ${EXTRA_SRCS} "i2c_driver.c" "power_driver.cpp" "initSequence.c" "touch_min.c")
+set(EXTRA_DEFINES ${EXTRA_DEFINES} CONFIG_LILYGO_T4_S3_241)

@@ -11,6 +11,7 @@ from typing import Protocol, Dict, List
 class FeatureContext:
     project_dir: Path
     main_dir: Path
+    cmake_extra_path: Path
 
 class Feature(Protocol):
     name: str

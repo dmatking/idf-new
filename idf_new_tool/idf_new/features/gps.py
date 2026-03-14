@@ -3,6 +3,7 @@
 
 from .base import FeatureContext, register
 from ..paths import FEATURES_DIR
+from ..manifest import merge_manifests
 
 class GPSFeature:
     name = "GPS support"
@@ -29,6 +30,9 @@ class GPSFeature:
                 kconfig_dst.write_text(existing + "\n\n" + snippet + "\n", encoding="utf-8")
             else:
                 kconfig_dst.write_text(snippet + "\n", encoding="utf-8")
+
+        # Merge any feature-specific manifest (when populated)
+        merge_manifests(ctx.main_dir / "idf_component.yml", source_dir / "idf_component.yml")
 
         # CMake patching for gps.c we'll add later once gps.c is real
 

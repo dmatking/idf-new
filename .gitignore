@@ -1,5 +1,5 @@
 # IDF build outputs
-build/
+/build/
 sdkconfig
 sdkconfig.old
 boards/lilygo/vendor
@@ -15,6 +15,8 @@ __pycache__/
 
 # Local scratch space
 temp/
+gen_*/
+sample_*/
+managed_components/
 boards/lilygo/tdisp191_amoled_touch/vendor/
 idf_new_tool/idf_new.egg-info/
-LilyGo-Display-IDF/
