@@ -20,8 +20,3 @@ bool board_has_lcd(void)
 {
     return false;
 }
-
-void board_lcd_sanity_test(void)
-{
-    ESP_LOGI(TAG, "No LCD; skipping sanity test.");
-}

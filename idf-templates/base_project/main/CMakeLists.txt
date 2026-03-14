@@ -7,7 +7,7 @@ if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/main.cmake.extra")
 endif()
 
 idf_component_register(
-    SRCS "main.c" "board_impl.c" ${EXTRA_SRCS}
+    SRCS "main.c" "board_impl.c" "board_defaults.c" ${EXTRA_SRCS}
     INCLUDE_DIRS "."
     REQUIRES ${EXTRA_REQUIRES}
 )
