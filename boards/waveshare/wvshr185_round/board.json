@@ -8,5 +8,8 @@
     "technology": "IPS",
     "shape": "round"
   },
-  "features": ["round", "qspi"]
+  "traits": [
+    "round",
+    "qspi"
+  ]
 }

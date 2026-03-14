@@ -28,7 +28,8 @@ class BoardInfo:
     board_id: str
     path: Path
     display_name: str
-    features: list[str]
+    traits: list[str]           # display/hardware characteristics (amoled, qspi, etc.)
+    board_features: list[str]   # optional on-board peripherals (tf_card, speaker, etc.)
     has_touch: bool
     screen: BoardScreen | None
     panel: str | None = None
@@ -48,7 +49,7 @@ def _load_board_info(board_id: str, directory: Path) -> BoardInfo:
     if meta_path.exists():
         try:
             data = json.loads(meta_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:  # pragma: no cover - defensive
+        except json.JSONDecodeError as exc:
             raise SystemExit(f"Invalid {BOARD_META_FILE} for board '{board_id}': {exc}") from exc
 
     screen = None
@@ -61,12 +62,13 @@ def _load_board_info(board_id: str, directory: Path) -> BoardInfo:
             shape=screen_data.get("shape"),
         )
 
-    raw_features = data.get("features")
-    features: list[str] = []
-    if isinstance(raw_features, list):
-        features = [str(feature) for feature in raw_features if str(feature).strip()]
-    features = list(dict.fromkeys(features))
+    def _str_list(raw: Any) -> list[str]:
+        if not isinstance(raw, list):
+            return []
+        return list(dict.fromkeys(str(v) for v in raw if str(v).strip()))
 
+    traits = _str_list(data.get("traits"))
+    board_features = _str_list(data.get("board_features"))
     display_name = data.get("display_name") or directory.name
     has_touch = bool(data.get("has_touch"))
     panel = data.get("panel")
@@ -75,7 +77,8 @@ def _load_board_info(board_id: str, directory: Path) -> BoardInfo:
         board_id=board_id,
         path=directory,
         display_name=display_name,
-        features=features,
+        traits=traits,
+        board_features=board_features,
         has_touch=has_touch,
         screen=screen,
         panel=panel,
@@ -94,7 +97,7 @@ def list_boards() -> list[BoardInfo]:
 def _ensure_within_boards(path: Path) -> None:
     try:
         path.relative_to(BOARDS_DIR.resolve())
-    except ValueError as exc:  # pragma: no cover - defensive guardrail
+    except ValueError as exc:
         raise SystemExit("Board path escapes boards/ directory") from exc
 
 

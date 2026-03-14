@@ -8,5 +8,10 @@
     "technology": "TFT IPS",
     "shape": "rect"
   },
-  "features": ["tft", "ips", "i80-8bit", "st7789"]
+  "traits": [
+    "tft",
+    "ips",
+    "i80-8bit",
+    "st7789"
+  ]
 }

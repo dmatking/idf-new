@@ -8,5 +8,8 @@
     "technology": "IPS",
     "shape": "rect"
   },
-  "features": ["ips", "spi"]
+  "traits": [
+    "ips",
+    "spi"
+  ]
 }

@@ -9,7 +9,7 @@ import argparse
 from pathlib import Path
 
 from .boards import BoardInfo, list_boards
-from .features import list_features
+from .modules import list_modules
 from .generator import GenerationOptions, ProjectGenerator
 
 
@@ -42,20 +42,28 @@ def build_parser() -> tuple[argparse.ArgumentParser, list]:
         help="Print available boards and exit",
     )
     parser.add_argument(
-        "--list-features",
+        "--list-modules",
         action="store_true",
-        help="Print available features and exit",
+        help="Print available modules and exit",
+    )
+    parser.add_argument(
+        "--feature",
+        action="append",
+        dest="features",
+        metavar="NAME",
+        default=[],
+        help="Include a board-specific feature (e.g. --feature tf_card). Repeatable.",
     )
 
-    available_features = list_features()
-    for feature in available_features:
+    available_modules = list_modules()
+    for mod in available_modules:
         parser.add_argument(
-            f"--{feature.flag}",
+            f"--{mod.flag}",
             action="store_true",
-            help=f"Include optional feature: {feature.name}",
+            help=f"Include module: {mod.name}",
         )
 
-    return parser, available_features
+    return parser, available_modules
 
 
 def _format_screen(info: BoardInfo) -> str | None:
@@ -82,7 +90,7 @@ def _format_traits(info: BoardInfo) -> list[str]:
         traits.append(str(info.screen.shape))
     if info.screen and info.screen.technology:
         traits.append(str(info.screen.technology).lower())
-    traits.extend(info.features)
+    traits.extend(info.traits)
     if info.panel:
         traits.append(str(info.panel).lower())
     ordered: list[str] = []
@@ -94,7 +102,6 @@ def _format_traits(info: BoardInfo) -> list[str]:
         seen.add(key)
         ordered.append(trait)
     return ordered
-
 
 
 def _ensure_boards_available() -> list[BoardInfo]:
@@ -141,7 +148,7 @@ def _prompt_project_name(default: str) -> str:
         return value
 
 
-def _handle_listing(args: argparse.Namespace, features: list) -> bool:
+def _handle_listing(args: argparse.Namespace, modules: list) -> bool:
     if args.list_boards:
         boards = list_boards()
         if boards:
@@ -159,23 +166,29 @@ def _handle_listing(args: argparse.Namespace, features: list) -> bool:
             print("No boards found under boards/.")
         return True
 
-    if args.list_features:
-        if features:
-            print("Available features:")
-            for feature in features:
-                print(f"  --{feature.flag}\t{feature.name}")
+    if args.list_modules:
+        if modules:
+            # Group by category
+            by_category: dict[str, list] = {}
+            for mod in modules:
+                by_category.setdefault(mod.category, []).append(mod)
+            print("Available modules:")
+            for category, mods in sorted(by_category.items()):
+                print(f"  {category}:")
+                for mod in mods:
+                    print(f"    --{mod.flag}\t{mod.name}")
         else:
-            print("No optional features are currently registered.")
+            print("No modules are currently registered.")
         return True
 
     return False
 
 
 def main() -> None:
-    parser, features = build_parser()
+    parser, modules = build_parser()
     args = parser.parse_args()
 
-    if _handle_listing(args, features):
+    if _handle_listing(args, modules):
         return
 
     boards_available = _ensure_boards_available()
@@ -187,13 +200,15 @@ def main() -> None:
 
     project_name = args.project_name or _prompt_project_name("generic_esp32")
 
-    enabled_features = [f.flag for f in features if getattr(args, f.flag)]
+    enabled_modules = [m.flag for m in modules if getattr(args, m.flag)]
+    enabled_features = list(args.features)
 
     options = GenerationOptions(
         project_name=project_name,
         board_id=board_id,
         destination=args.dest,
         feature_flags=enabled_features,
+        module_flags=enabled_modules,
     )
 
     generator = ProjectGenerator(options)
@@ -205,7 +220,9 @@ def main() -> None:
 
     print(f"Project created at {project.root}")
     if enabled_features:
-        print("Enabled features: " + ", ".join(enabled_features))
+        print("Board features: " + ", ".join(enabled_features))
+    if enabled_modules:
+        print("Modules: " + ", ".join(enabled_modules))
 
     print("Next steps:")
     print(f"  cd {project.root}")

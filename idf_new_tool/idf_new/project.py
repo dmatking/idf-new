@@ -88,5 +88,34 @@ def install_board(project: Project, board_dir: Path, board_id: str) -> Path:
 			project.copy_into_main(extra)
 
 	return destination
+
+
+def install_board_feature(project: Project, feature_dir: Path, name: str) -> None:
+	"""Copy a board-local feature's files into the project."""
+	manifest_dst = project.main_dir / "idf_component.yml"
+	merge_manifests(manifest_dst, feature_dir / "idf_component.yml")
+
+	cmake_extra_dst = project.main_dir / "main.cmake.extra"
+	cmake_extra_src = feature_dir / "main.cmake.extra"
+	if cmake_extra_src.exists():
+		existing = cmake_extra_dst.read_text(encoding="utf-8") if cmake_extra_dst.exists() else ""
+		cmake_extra_dst.write_text(
+			existing.rstrip() + "\n" + cmake_extra_src.read_text(encoding="utf-8"),
+			encoding="utf-8",
+		)
+
+	kconfig_src = feature_dir / "Kconfig"
+	kconfig_dst = project.main_dir / "Kconfig.projbuild"
+	if kconfig_src.exists():
+		snippet = kconfig_src.read_text(encoding="utf-8").rstrip()
+		if kconfig_dst.exists():
+			existing = kconfig_dst.read_text(encoding="utf-8").rstrip()
+			kconfig_dst.write_text(existing + "\n\n" + snippet + "\n", encoding="utf-8")
+		else:
+			kconfig_dst.write_text(snippet + "\n", encoding="utf-8")
+
+	for pattern in ("*.c", "*.cpp", "*.h"):
+		for src in feature_dir.glob(pattern):
+			project.copy_into_main(src)
 # Copyright 2025 David M. King
 # SPDX-License-Identifier: Apache-2.0

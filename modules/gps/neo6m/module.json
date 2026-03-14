@@ -1,0 +1,9 @@
+{
+  "name": "GPS — u-blox NEO-6M / GY-NEO6MV2",
+  "flag": "gps_neo6m",
+  "category": "GPS",
+  "interface": "uart",
+  "protocol": "nmea",
+  "default_baud": 9600,
+  "notes": "Standard NMEA UART module. Wiring: ESP32 TX → module RX, ESP32 RX ← module TX. Configure pins via menuconfig."
+}

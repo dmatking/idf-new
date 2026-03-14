@@ -8,5 +8,8 @@
     "technology": "AMOLED",
     "shape": "rect"
   },
-  "features": ["amoled", "qspi"]
+  "traits": [
+    "amoled",
+    "qspi"
+  ]
 }

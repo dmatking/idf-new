@@ -1,0 +1,31 @@
+menu "GPS Module"
+
+    config GPS_UART_PORT
+        int "UART port number"
+        range 0 2
+        default 1
+        help
+            UART peripheral to use for GPS communication (0, 1, or 2).
+
+    config GPS_TX_PIN
+        int "TX GPIO (ESP32 → GPS RX)"
+        range -1 48
+        default 17
+        help
+            GPIO connected to the GPS module's RX pin.
+            Set to -1 to leave unconnected (receive-only mode).
+
+    config GPS_RX_PIN
+        int "RX GPIO (GPS TX → ESP32)"
+        range 0 48
+        default 3
+        help
+            GPIO connected to the GPS module's TX pin.
+
+    config GPS_BAUD_RATE
+        int "Baud rate"
+        default 9600
+        help
+            Serial baud rate. Most NMEA GPS modules default to 9600.
+
+endmenu

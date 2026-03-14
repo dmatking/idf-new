@@ -8,5 +8,9 @@
     "technology": "IPS",
     "shape": "round"
   },
-  "features": ["round", "gc9a01", "tft"]
+  "traits": [
+    "round",
+    "gc9a01",
+    "tft"
+  ]
 }

@@ -1,0 +1,9 @@
+{
+  "name": "GPS — ATGM336H",
+  "flag": "gps_atgm336h",
+  "category": "GPS",
+  "interface": "uart",
+  "protocol": "nmea",
+  "default_baud": 9600,
+  "notes": "Chinese NMEA UART module, pin-compatible with NEO-6M. Wiring: ESP32 TX → module RX, ESP32 RX ← module TX. Configure pins via menuconfig."
+}

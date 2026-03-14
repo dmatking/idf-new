@@ -8,4 +8,4 @@ ROOT = Path(__file__).resolve().parents[2]
 
 BOARDS_DIR    = ROOT / "boards"
 TEMPLATES_DIR = ROOT / "idf-templates" / "base_project"
-FEATURES_DIR  = ROOT / "features"
+MODULES_DIR   = ROOT / "modules"
