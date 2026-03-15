@@ -12,11 +12,10 @@ idf-new my_project --board waveshare/wvshr200_touch --feature tf_card --module g
 
 ```bash
 git clone https://github.com/dmatking/idf-new.git
-pipx install -e idf-new/idf_new_tool
+cd idf-new
+pip install -e idf_new_tool
 ```
 
-> **Why `pipx`?** idf-new is a CLI tool. `pipx` installs it in an isolated environment so its dependencies don't conflict with your other Python tools. If you don't have `pipx`: `pip install pipx`.
->
 > The `-e` (editable) flag is required — idf-new reads `boards/`, `modules/`, and `idf-templates/` directly from the repo checkout at runtime.
 
 Generate a project:
@@ -188,17 +187,10 @@ Use `idf-new --list-modules` to see registered modules.
 
 idf-new must be installed as an editable install from the repo checkout — it reads `boards/`, `modules/`, and `idf-templates/` from the repo at runtime.
 
-**Recommended (pipx, isolated environment):**
-
 ```bash
 git clone https://github.com/dmatking/idf-new.git
-pipx install -e idf-new/idf_new_tool
-```
-
-**Alternative (plain pip):**
-
-```bash
-pip install -e idf-new/idf_new_tool
+cd idf-new
+pip install -e idf_new_tool
 ```
 
 **To update:** just `git pull` in the repo — no reinstall needed.
