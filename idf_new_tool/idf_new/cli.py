@@ -52,6 +52,11 @@ def build_parser() -> tuple[argparse.ArgumentParser, list]:
         help="Find boards matching a tag (e.g. --find ips, --find touch)",
     )
     parser.add_argument(
+        "--list-tags",
+        action="store_true",
+        help="Print all available board tags and exit",
+    )
+    parser.add_argument(
         "--feature",
         action="append",
         dest="features",
@@ -169,6 +174,19 @@ def _handle_listing(args: argparse.Namespace, modules: list) -> bool:
                 print()
         else:
             print("No boards found under boards/.")
+        return True
+
+    if args.list_tags:
+        boards = list_boards()
+        all_tags: set[str] = set()
+        for b in boards:
+            all_tags.update(t.lower() for t in _format_traits(b))
+        if all_tags:
+            print("Available tags (use with --find):\n")
+            for tag in sorted(all_tags):
+                print(f"  {tag}")
+        else:
+            print("No tags found.")
         return True
 
     if args.find:
