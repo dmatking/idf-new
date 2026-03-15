@@ -1,0 +1,10 @@
+menu "RTC (PCF8563)"
+
+    config RTC_I2C_PORT
+        int "I2C port number"
+        default 0
+        range 0 1
+        help
+            Shared with IMU. Must match CONFIG_IMU_I2C_PORT if both features are used.
+
+endmenu

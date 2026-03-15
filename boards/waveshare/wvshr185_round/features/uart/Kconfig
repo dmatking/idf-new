@@ -1,0 +1,16 @@
+menu "UART Header"
+
+    config UART_HEADER_PORT
+        int "UART port number"
+        default 1
+        range 0 2
+        help
+            UART peripheral number (0=UART0/console, 1 or 2 recommended).
+
+    config UART_HEADER_BAUD
+        int "Baud rate"
+        default 115200
+        help
+            UART baud rate.
+
+endmenu

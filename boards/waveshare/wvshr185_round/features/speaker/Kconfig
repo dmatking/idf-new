@@ -1,0 +1,16 @@
+menu "Speaker (MAX98357A)"
+
+    config SPEAKER_SAMPLE_RATE
+        int "Sample rate (Hz)"
+        default 16000
+        help
+            I2S sample rate for speaker output.
+
+    config SPEAKER_BITS_PER_SAMPLE
+        int "Bits per sample"
+        default 16
+        range 16 32
+        help
+            PCM bit depth. 16 is standard for most audio.
+
+endmenu
