@@ -27,50 +27,55 @@ Others can be found on AliExpress and other sites that are similar if not the sa
 
 ---
 
-## Pin Reference (from the included annotated diagram)
+## Pin Reference
 
-### FPC I/O
-```
-IO26     U1_TX
-IO25     U1_RX
-IO22     IIC_SCL
-IO21     IIC_SDA
-IO15     IO23
-IO14     IO18
-3V3
-GND
-```
+### GC9A01 TFT Display (SPI2_HOST, 240x240)
 
-### Micro-SD Card
-```
-DATA3    IO13
-CMD      IO15
-3V3      VDD
-CLK      IO14
-VSS      GND
-DATA0    IO2
-```
+| Signal | GPIO |
+| ------ | ---- |
+| CLK    | IO14 |
+| MOSI   | IO15 |
+| MISO   | IO2  |
+| CS     | IO5  |
+| DC     | IO27 |
+| RST    | IO33 |
+| BLK    | IO32 |
 
-### GC9A01 TFT Header
-```
-IO32     BLK
-IO5      CS
-IO27     DC
-IO33     RES
-IO15     SDA
-IO14     SCL
-3V3
-GND
-```
+### Micro-SD Card (SPI2_HOST, shared bus with display)
+
+| Signal | GPIO |
+| ------ | ---- |
+| CLK    | IO14 |
+| CMD    | IO15 |
+| DATA0  | IO2  |
+| DATA3/CS | IO13 |
+
+### UART Header (UART1, via FPC)
+
+| Signal | GPIO |
+| ------ | ---- |
+| TX     | IO26 |
+| RX     | IO25 |
+
+### I2C Header (I2C_NUM_0, 400 kHz, via FPC)
+
+| Signal | GPIO |
+| ------ | ---- |
+| SCL    | IO22 |
+| SDA    | IO21 |
 
 ### Side Buttons
 - **Power ON/OFF button:** true hardware power latch
 - **IO19 button**
 - **IO4 button**
 
-### FPC Connector
-- Additional mixed-signal GPIO via flat-flex
-- See pinout above
+### FPC Connector (active signals listed above)
+```
+IO26  U1_TX       IO25  U1_RX
+IO22  IIC_SCL     IO21  IIC_SDA
+IO15  (shared)    IO14  (shared)
+3V3               GND
+```
 
 ---
 
@@ -97,17 +102,17 @@ Recommended `menuconfig` items:
 
 ## Hardware Quirks & Warnings
 
-### 🔌 1. True Hardware Power Switch
+### 1. True Hardware Power Switch
 This is **not** a soft “EN” line. It fully disconnects the board from USB power rails.
 
 - Plugging in USB **does NOT power the board**
 - The ESP32 will **not enumerate** over USB until you press the ON/OFF button
 - Pressing the switch again **cuts power completely**
 
-### 📀 2. SD Card Pin Sharing
+### 2. SD Card Pin Sharing
 Some SD-card pins overlap with TFT pins (IO14 / IO15), so simultaneous SD + TFT usage requires careful configuration.
 
-### 🔄 3. Boot / Flash Mode
+### 3. Boot / Flash Mode
 If flashing fails, ensure:
 - Power switch is ON
 - Board is actually enumerated in Device Manager
@@ -119,7 +124,9 @@ If flashing fails, ensure:
 - [x] USB power + power button
 - [x] UART0 over USB-C
 - [x] GC9A01 round TFT
-- [ ] SD card (not tested)
+- [x] SD card
+- [ ] UART header (TX=IO26, RX=IO25)
+- [ ] I2C header (SCL=IO22, SDA=IO21)
 - [ ] GPIO buttons (IO19, IO4)
 
 ---
