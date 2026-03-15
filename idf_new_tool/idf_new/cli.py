@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2025 David M. King
+# Copyright 2025-2026 David M. King
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations

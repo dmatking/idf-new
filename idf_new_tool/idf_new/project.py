@@ -1,4 +1,4 @@
-# Copyright 2025 David M. King
+# Copyright 2025-2026 David M. King
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
@@ -117,5 +117,5 @@ def install_board_feature(project: Project, feature_dir: Path, name: str) -> Non
 	for pattern in ("*.c", "*.cpp", "*.h"):
 		for src in feature_dir.glob(pattern):
 			project.copy_into_main(src)
-# Copyright 2025 David M. King
+# Copyright 2025-2026 David M. King
 # SPDX-License-Identifier: Apache-2.0

@@ -1,4 +1,4 @@
-// Copyright 2025 David M. King
+// Copyright 2025-2026 David M. King
 // SPDX-License-Identifier: Apache-2.0
 
 // QMI8658 6-axis IMU over I2C
