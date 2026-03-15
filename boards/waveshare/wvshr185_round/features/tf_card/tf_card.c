@@ -32,6 +32,11 @@ static sdmmc_card_t *s_card = NULL;
 
 static esp_err_t init_i2c_bus(void)
 {
+    esp_err_t ret = i2c_driver_install(I2C_PORT, I2C_MODE_MASTER, 0, 0, 0);
+    if (ret == ESP_FAIL || ret == ESP_ERR_INVALID_STATE) {
+        return ESP_OK;  // Already installed by another feature
+    }
+    if (ret != ESP_OK) return ret;
     i2c_config_t cfg = {
         .mode             = I2C_MODE_MASTER,
         .sda_io_num       = I2C_PIN_SDA,
@@ -40,12 +45,7 @@ static esp_err_t init_i2c_bus(void)
         .scl_pullup_en    = GPIO_PULLUP_ENABLE,
         .master.clk_speed = 400000,
     };
-    esp_err_t ret = i2c_param_config(I2C_PORT, &cfg);
-    if (ret != ESP_OK) return ret;
-    ret = i2c_driver_install(I2C_PORT, I2C_MODE_MASTER, 0, 0, 0);
-    // Already installed by another feature — that's fine
-    if (ret == ESP_ERR_INVALID_STATE) ret = ESP_OK;
-    return ret;
+    return i2c_param_config(I2C_PORT, &cfg);
 }
 
 static esp_err_t tca9554_init(void)

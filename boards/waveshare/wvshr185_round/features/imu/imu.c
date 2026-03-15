@@ -40,6 +40,14 @@ static esp_err_t i2c_read_regs(uint8_t reg, uint8_t *data, size_t len)
 
 static esp_err_t init_i2c_bus(void)
 {
+    // Try install first. If already installed, skip param_config entirely —
+    // calling i2c_param_config resets the I2C peripheral (i2c_hal_master_init)
+    // and can corrupt in-progress bus state shared with other features.
+    esp_err_t ret = i2c_driver_install(I2C_PORT, I2C_MODE_MASTER, 0, 0, 0);
+    if (ret == ESP_FAIL || ret == ESP_ERR_INVALID_STATE) {
+        return ESP_OK;  // Already installed by another feature
+    }
+    if (ret != ESP_OK) return ret;
     i2c_config_t cfg = {
         .mode             = I2C_MODE_MASTER,
         .sda_io_num       = I2C_PIN_SDA,
@@ -48,12 +56,7 @@ static esp_err_t init_i2c_bus(void)
         .scl_pullup_en    = GPIO_PULLUP_ENABLE,
         .master.clk_speed = 400000,
     };
-    esp_err_t ret = i2c_param_config(I2C_PORT, &cfg);
-    if (ret != ESP_OK) return ret;
-    ret = i2c_driver_install(I2C_PORT, I2C_MODE_MASTER, 0, 0, 0);
-    // ESP_ERR_INVALID_STATE means already installed — that's fine
-    if (ret == ESP_ERR_INVALID_STATE) ret = ESP_OK;
-    return ret;
+    return i2c_param_config(I2C_PORT, &cfg);
 }
 
 esp_err_t imu_init(void)
