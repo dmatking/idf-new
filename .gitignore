@@ -13,6 +13,9 @@ __pycache__/
 .vscode/
 .idea/
 
+# Vendor datasheets/schematics (unclear licensing)
+*.pdf
+
 # Local scratch space
 temp/
 gen_*/
