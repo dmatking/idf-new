@@ -192,7 +192,7 @@ def _handle_listing(args: argparse.Namespace, modules: list) -> bool:
     if args.find:
         query = args.find.lower()
         boards = list_boards()
-        matches = [b for b in boards if query in {t.lower() for t in _format_traits(b)}]
+        matches = [b for b in boards if any(query in t.lower() for t in _format_traits(b))]
         if matches:
             print(f"Boards matching '{args.find}':\n")
             for info in matches:
