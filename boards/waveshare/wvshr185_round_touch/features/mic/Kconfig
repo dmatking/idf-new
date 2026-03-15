@@ -1,0 +1,9 @@
+menu "Microphone (PDM)"
+
+    config MIC_SAMPLE_RATE
+        int "Sample rate (Hz)"
+        default 16000
+        help
+            PDM microphone sample rate.
+
+endmenu

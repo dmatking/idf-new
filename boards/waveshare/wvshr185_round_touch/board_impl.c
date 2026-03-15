@@ -1,4 +1,4 @@
-// Copyright 2025 David M. King
+// Copyright 2025-2026 David M. King
 // SPDX-License-Identifier: Apache-2.0
 
 #include "board_interface.h"
@@ -34,7 +34,7 @@
 #define PIN_TOUCH_SCL 3
 #define PIN_TOUCH_INT 4
 
-#define TOUCH_I2C_PORT I2C_NUM_0
+#define TOUCH_I2C_PORT I2C_NUM_1
 #define CST816_ADDR 0x15
 #define CST816_DATA_REG 0x02
 
@@ -450,23 +450,35 @@ bool board_has_lcd(void)
     return s_panel != NULL;
 }
 
+void board_lcd_fill(uint16_t color)
+{
+    fill_screen(color);
+}
+
+static void lcd_sanity_task(void *arg)
+{
+    static const uint16_t colors[] = {
+        0xF800, // red
+        0x07E0, // green
+        0x001F, // blue
+        0xFFFF, // white
+        0x0000, // black
+    };
+    const int n = sizeof(colors) / sizeof(colors[0]);
+    int i = 0;
+    while (1) {
+        fill_screen(colors[i]);
+        i = (i + 1) % n;
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+
 void board_lcd_sanity_test(void)
 {
     if (!s_panel) {
         ESP_LOGW(TAG, "Panel missing; skip sanity test");
         return;
     }
-
-    uint16_t red = 0xF800;
-    uint16_t green = 0x07E0;
-    uint16_t blue = 0x001F;
-    uint16_t black = 0x0000;
-
-    fill_screen(red);
-    vTaskDelay(pdMS_TO_TICKS(500));
-    fill_screen(green);
-    vTaskDelay(pdMS_TO_TICKS(500));
-    fill_screen(blue);
-    vTaskDelay(pdMS_TO_TICKS(500));
-    fill_screen(black);
+    ESP_LOGI(TAG, "Starting LCD sanity task...");
+    xTaskCreate(lcd_sanity_task, "lcd_sanity", 4096, NULL, 4, NULL);
 }
