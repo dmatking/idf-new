@@ -47,6 +47,11 @@ def build_parser() -> tuple[argparse.ArgumentParser, list]:
         help="Print available modules and exit",
     )
     parser.add_argument(
+        "--find",
+        metavar="TAG",
+        help="Find boards matching a tag (e.g. --find ips, --find touch)",
+    )
+    parser.add_argument(
         "--feature",
         action="append",
         dest="features",
@@ -159,14 +164,30 @@ def _handle_listing(args: argparse.Namespace, modules: list) -> bool:
                 screen_desc = _format_screen(info)
                 if screen_desc:
                     print(f"    Screen: {screen_desc}")
-                traits = _format_traits(info)
-                if traits:
-                    print(f"    Tags: {', '.join(traits)}")
                 if info.board_features:
                     print(f"    Features: {', '.join(info.board_features)}")
                 print()
         else:
             print("No boards found under boards/.")
+        return True
+
+    if args.find:
+        query = args.find.lower()
+        boards = list_boards()
+        matches = [b for b in boards if query in {t.lower() for t in _format_traits(b)}]
+        if matches:
+            print(f"Boards matching '{args.find}':\n")
+            for info in matches:
+                print(f"  - {info.board_id}")
+                print(f"    Name: {info.display_name}")
+                screen_desc = _format_screen(info)
+                if screen_desc:
+                    print(f"    Screen: {screen_desc}")
+                if info.board_features:
+                    print(f"    Features: {', '.join(info.board_features)}")
+                print()
+        else:
+            print(f"No boards match '{args.find}'.")
         return True
 
     if args.list_modules:
