@@ -13,10 +13,21 @@ idf-new my_project --board waveshare/wvshr200_touch --feature tf_card --module g
 ```bash
 git clone https://github.com/dmatking/idf-new.git
 cd idf-new
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -e idf_new_tool
 ```
 
 > The `-e` (editable) flag is required — idf-new reads `boards/`, `modules/`, and `idf-templates/` directly from the repo checkout at runtime.
+
+After the initial setup, activate the venv at the start of each session alongside ESP-IDF:
+
+```bash
+source ~/esp/esp-idf/export.sh
+source ~/idf-new/.venv/bin/activate
+```
+
+> On Debian/Raspberry Pi OS, system Python is externally managed and blocks global pip installs. A venv sidesteps this cleanly. If you'd prefer a one-liner without a venv, see [Alternative: system-wide install](#alternative-system-wide-install).
 
 Generate a project:
 
@@ -190,10 +201,24 @@ idf-new must be installed as an editable install from the repo checkout — it r
 ```bash
 git clone https://github.com/dmatking/idf-new.git
 cd idf-new
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -e idf_new_tool
 ```
 
 **To update:** just `git pull` in the repo — no reinstall needed.
+
+---
+
+## Alternative: system-wide install
+
+If you don't want to manage a venv, you can install directly into your user Python environment. On Debian/Raspberry Pi OS you'll need to pass `--break-system-packages`:
+
+```bash
+pip install -e idf_new_tool --break-system-packages
+```
+
+This is safe for a dev tool with a single dependency (PyYAML), but the venv approach above is cleaner and won't interfere with system packages.
 
 ---
 
