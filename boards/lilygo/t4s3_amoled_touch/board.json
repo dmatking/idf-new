@@ -4,7 +4,7 @@
   "has_touch": true,
   "screen": {
     "size_inches": 2.41,
-    "resolution": "600x450",
+    "resolution": "450x600",
     "technology": "AMOLED",
     "shape": "rect"
   },

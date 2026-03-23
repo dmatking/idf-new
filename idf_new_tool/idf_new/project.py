@@ -87,6 +87,18 @@ def install_board(project: Project, board_dir: Path, board_id: str) -> Path:
 				continue
 			project.copy_into_main(extra)
 
+	# Copy sdkconfig.defaults* files to project root
+	for sdkconfig in board_dir.glob("sdkconfig.defaults*"):
+		shutil.copy2(sdkconfig, project.root / sdkconfig.name)
+
+	# Copy vendored components directory if present
+	components_src = board_dir / "components"
+	if components_src.is_dir():
+		components_dst = project.root / "components"
+		for component in components_src.iterdir():
+			if component.is_dir():
+				shutil.copytree(component, components_dst / component.name)
+
 	return destination
 
 

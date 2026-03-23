@@ -14,6 +14,7 @@
 #include "esp_log.h"
 #include <stdlib.h>
 #include <string.h>
+#include "esp_heap_caps.h"
 #include "board_interface.h"
 #include "i2c_driver.h"
 #include "power_driver.h"
@@ -37,6 +38,7 @@ static uint16_t amoled_width(void);
 static uint16_t amoled_height(void);
 static void amoled_set_window(uint16_t xs, uint16_t ys, uint16_t xe, uint16_t ye);
 static void amoled_push_buffer(uint16_t *data, uint32_t len);
+static void display_push_colors(uint16_t x, uint16_t y, uint16_t width, uint16_t hight, uint16_t *data);
 
 #ifndef LOW
 #define LOW 0
@@ -63,22 +65,56 @@ void board_init(void)
     display_init();
 }
 
+// Byte-swap RGB565 for SPI wire order (little-endian ESP32 -> big-endian display)
+static inline uint16_t swap16(uint16_t c) { return (c >> 8) | (c << 8); }
+
+// Fill screen using full-frame PSRAM push (row-by-row does not work on this panel)
+static void fill_screen(uint16_t color)
+{
+    // AMOLED_HEIGHT=450 is physical width, AMOLED_WIDTH=600 is physical height
+    const int w = amoled_height();  // 450 columns
+    const int h = amoled_width();   // 600 rows
+    const int total = w * h;
+    uint16_t panel_color = swap16(color);
+
+    uint16_t *fb = (uint16_t *)heap_caps_malloc(total * sizeof(uint16_t),
+                                                 MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!fb) {
+        ESP_LOGE(TAG, "fill_screen: PSRAM alloc failed");
+        return;
+    }
+    for (int i = 0; i < total; i++) fb[i] = panel_color;
+    display_push_colors(0, 0, w, h, fb);
+    heap_caps_free(fb);
+}
+
+void board_lcd_fill(uint16_t color)
+{
+    fill_screen(color);
+}
+
+static void lcd_sanity_task(void *arg)
+{
+    static const uint16_t colors[] = {
+        0xF800, // red
+        0x07E0, // green
+        0x001F, // blue
+        0xFFFF, // white
+        0x0000, // black
+    };
+    const int n = sizeof(colors) / sizeof(colors[0]);
+    int i = 0;
+    while (1) {
+        fill_screen(colors[i]);
+        i = (i + 1) % n;
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+
 void board_lcd_sanity_test(void)
 {
-    uint16_t colors[] = {0xF800, 0x07E0, 0x001F, 0xFFFF, 0x0000};
-    for (int i = 0; i < 5; ++i) {
-        uint32_t w = amoled_width();
-        uint32_t h = amoled_height();
-        static uint16_t line[600];
-        for (uint32_t x = 0; x < w && x < (sizeof(line) / sizeof(line[0])); ++x) {
-            line[x] = colors[i];
-        }
-        for (uint32_t y = 0; y < h; ++y) {
-            amoled_set_window(0, y, w - 1, y);
-            amoled_push_buffer(line, w);
-        }
-        vTaskDelay(pdMS_TO_TICKS(200));
-    }
+    ESP_LOGI(TAG, "Starting LCD sanity task...");
+    xTaskCreate(lcd_sanity_task, "lcd_sanity", 4096, NULL, 4, NULL);
 }
 #ifndef HIGH
 #define HIGH 1
@@ -273,6 +309,10 @@ uint8_t amoled_get_brightness()
 
 void amoled_set_window(uint16_t xs, uint16_t ys, uint16_t xe, uint16_t ye)
 {
+#if CONFIG_LILYGO_T4_S3_241
+    xs += 16;
+    xe += 16;
+#endif
 
     lcd_cmd_t t[3] = {
         {
