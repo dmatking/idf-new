@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
-from .boards import validate_board
+from .boards import validate_board, _load_board_info
 from .modules import ModuleContext, get_module
 from .paths import TEMPLATES_DIR
 from .project import Project, create_project, install_board, install_board_feature
@@ -28,6 +28,7 @@ class ProjectGenerator:
 
 	def generate(self) -> Project:
 		board_dir = validate_board(self.options.board_id)
+		board_info = _load_board_info(self.options.board_id, board_dir)
 		project = create_project(
 			name=self.options.project_name,
 			template_dir=TEMPLATES_DIR,
@@ -35,7 +36,7 @@ class ProjectGenerator:
 		)
 		install_board(project, board_dir, self.options.board_id)
 		self._apply_board_features(project, board_dir)
-		self._apply_modules(project)
+		self._apply_modules(project, board_info)
 		return project
 
 	def _apply_board_features(self, project: Project, board_dir: Path) -> None:
@@ -53,7 +54,7 @@ class ProjectGenerator:
 				)
 			install_board_feature(project, feature_dir, name)
 
-	def _apply_modules(self, project: Project) -> None:
+	def _apply_modules(self, project: Project, board_info=None) -> None:
 		requested = list(dict.fromkeys(self.options.module_flags))
 		if not requested:
 			return
@@ -62,6 +63,7 @@ class ProjectGenerator:
 			project_dir=project.root,
 			main_dir=project.main_dir,
 			cmake_extra_path=project.main_dir / "main.cmake.extra",
+			board_info=board_info,
 		)
 		for flag in requested:
 			try:

@@ -271,6 +271,12 @@ def main() -> None:
     print("  idf.py set-target <esp32/esp32s3/etc>")
     print("  idf.py build flash monitor")
 
+    if "sim" in enabled_modules:
+        print("Desktop sim:")
+        print("  cd sim && mkdir build && cd build && cmake .. && make")
+        print(f"  ./{project_name}_sim                          # live SDL window")
+        print(f"  ./{project_name}_sim --screenshot out.png     # headless PNG")
+
 
 if __name__ == "__main__":
     main()
