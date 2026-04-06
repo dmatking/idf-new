@@ -15,5 +15,15 @@ dependencies = []
 [project.scripts]
 idf-new = "idf_new.cli:main"
 
+[project.optional-dependencies]
+test = ["pytest>=8.0", "pyyaml"]
+
 [tool.setuptools.packages.find]
 where = ["idf_new_tool"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v"
+markers = [
+    "build: ESP-IDF build tests (slow, requires IDF_PATH set via export.sh)",
+]
