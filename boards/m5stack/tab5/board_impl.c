@@ -2,87 +2,202 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // Board implementation for M5Stack Tab5 (ESP32-P4)
-// 720x1280 MIPI-DSI LCD (ILI9881C, RGB565), GT911 capacitive touch
-// LCD/touch power gated via PI4IOE5V6408 I2C IO expander
+// Post-Oct-2025 hardware revision: ST7123 combined display+touch IC
+// 720x1280 MIPI-DSI 2-lane, RGB565
 //
-// Init sequence ported from Espressif esp-bsp (verified on hardware).
+// Init sequence derived from M5Tab5-UserDemo (MIT, M5Stack Technology CO LTD)
+// ST7123 LCD driver: Apache-2.0, Espressif Systems
 
 #include "board_interface.h"
 
 #include <string.h>
 #include "driver/gpio.h"
 #include "driver/i2c_master.h"
+#include "driver/ledc.h"
 #include "esp_cache.h"
 #include "esp_heap_caps.h"
-#include "esp_lcd_ili9881c.h"
 #include "esp_lcd_mipi_dsi.h"
-#include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
+#include "esp_lcd_st7123.h"
 #include "esp_ldo_regulator.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "disp_init_data.h"
-
 static const char *TAG = "BOARD_TAB5";
 
 #define BOARD_NAME  "M5Stack Tab5"
 
-#define LCD_W  720
-#define LCD_H  1280
-#define BPP    2    // RGB565
+// I2C (system bus — PI4IOE expanders and touch)
+#define I2C_BUS_NUM     0
+#define I2C_SDA_GPIO    31
+#define I2C_SCL_GPIO    32
+#define I2C_TIMEOUT_MS  50
 
-// MIPI-DSI config — from Espressif BSP / display.h
-#define DSI_LANE_NUM        2
-#define DSI_LANE_MBPS       1000
-#define DSI_DPI_CLK_MHZ     60
-#define DSI_PHY_LDO_CHAN    3
-#define DSI_PHY_LDO_MV      2500
+// PI4IOE5V6408 IO expander I2C addresses
+#define PI4IOE1_ADDR    0x43  // addr pin low
+#define PI4IOE2_ADDR    0x44  // addr pin high
 
-// GPIO
-#define BK_LIGHT_GPIO       22   // active HIGH
+// PI4IOE register map
+#define PI4IO_REG_CHIP_RESET  0x01
+#define PI4IO_REG_IO_DIR      0x03
+#define PI4IO_REG_OUT_SET     0x05
+#define PI4IO_REG_OUT_H_IM    0x07
+#define PI4IO_REG_IN_DEF_STA  0x09
+#define PI4IO_REG_PULL_EN     0x0B
+#define PI4IO_REG_PULL_SEL    0x0D
+#define PI4IO_REG_INT_MASK    0x11
 
-// I2C (shared bus for IO expander and touch)
-#define I2C_SCL_GPIO        32
-#define I2C_SDA_GPIO        31
-#define I2C_SPEED_HZ        400000
+// LDO channel for MIPI DSI PHY power
+#define DSI_PHY_LDO_CHAN        3
+#define DSI_PHY_LDO_VOLTAGE_MV  2500
 
-// PI4IOE5V6408 IO expander
-#define IO_EXP_ADDR         0x43  // ADDRESS_LOW
-#define IO_EXP_REG_OUTPUT   0x01
-#define IO_EXP_REG_CONFIG   0x03
-#define IO_EXP_PIN_LCD_EN   4
-#define IO_EXP_PIN_TOUCH_EN 5
+// Backlight: LEDC PWM on GPIO 22
+#define LCD_BACKLIGHT_GPIO  22
+#define LCD_LEDC_TIMER      LEDC_TIMER_0
+#define LCD_LEDC_CHAN       LEDC_CHANNEL_1
+#define LCD_LEDC_FREQ_HZ    5000
+#define LCD_LEDC_DUTY_RES   LEDC_TIMER_12_BIT
+#define LCD_LEDC_DUTY_MAX   4095
 
-#define FB_SIZE (LCD_W * LCD_H * BPP)
+// Display geometry and DSI parameters
+#define LCD_W               720
+#define LCD_H               1280
+#define BPP                 2   // RGB565
+#define FB_SIZE             (LCD_W * LCD_H * BPP)
+#define DSI_LANE_BITRATE    965  // Mbps
+#define DPI_CLOCK_MHZ       70
 
 static esp_lcd_panel_handle_t  s_panel   = NULL;
 static uint8_t                *s_fb      = NULL;  // hardware framebuffer (DPI)
 static uint8_t                *s_backbuf = NULL;  // render buffer (PSRAM)
 
-// --- IO expander: enable LCD and touch power via PI4IOE5V6408 ---
-// Must run before LDO/DSI init — without power the ILI9881C init will time out.
-static void io_expander_enable_lcd_touch(i2c_master_bus_handle_t bus)
+// --- ST7123 vendor init sequence (M5Stack Tab5, post-Oct-2025 hardware) ---
+static const st7123_lcd_init_cmd_t s_st7123_init[] = {
+    {0x60, (uint8_t[]){0x71, 0x23, 0xa2}, 3, 0},
+    {0x60, (uint8_t[]){0x71, 0x23, 0xa3}, 3, 0},
+    {0x60, (uint8_t[]){0x71, 0x23, 0xa4}, 3, 0},
+    {0xA4, (uint8_t[]){0x31}, 1, 0},
+    {0xD7, (uint8_t[]){0x10, 0x0A, 0x10, 0x2A, 0x80, 0x80}, 6, 0},
+    {0x90, (uint8_t[]){0x71, 0x23, 0x5A, 0x20, 0x24, 0x09, 0x09}, 7, 0},
+    {0xA3, (uint8_t[]){0x80, 0x01, 0x88, 0x30, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46, 0x00, 0x00,
+                       0x1E, 0x5C, 0x1E, 0x80, 0x00, 0x4F, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46,
+                       0x00, 0x00, 0x1E, 0x5C, 0x1E, 0x80, 0x00, 0x6F, 0x58, 0x00, 0x00, 0x00, 0xFF},
+     40, 0},
+    {0xA6, (uint8_t[]){0x03, 0x00, 0x24, 0x55, 0x36, 0x00, 0x39, 0x00, 0x6E, 0x6E, 0x91, 0xFF, 0x00, 0x24,
+                       0x55, 0x38, 0x00, 0x37, 0x00, 0x6E, 0x6E, 0x91, 0xFF, 0x00, 0x24, 0x11, 0x00, 0x00,
+                       0x00, 0x00, 0x6E, 0x6E, 0x91, 0xFF, 0x00, 0xEC, 0x11, 0x00, 0x03, 0x00, 0x03, 0x6E,
+                       0x6E, 0xFF, 0xFF, 0x00, 0x08, 0x80, 0x08, 0x80, 0x06, 0x00, 0x00, 0x00, 0x00},
+     55, 0},
+    {0xA7, (uint8_t[]){0x19, 0x19, 0x80, 0x64, 0x40, 0x07, 0x16, 0x40, 0x00, 0x44, 0x03, 0x6E, 0x6E, 0x91, 0xFF,
+                       0x08, 0x80, 0x64, 0x40, 0x25, 0x34, 0x40, 0x00, 0x02, 0x01, 0x6E, 0x6E, 0x91, 0xFF, 0x08,
+                       0x80, 0x64, 0x40, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x6E, 0x6E, 0x91, 0xFF, 0x08, 0x80,
+                       0x64, 0x40, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x6E, 0x6E, 0x84, 0xFF, 0x08, 0x80, 0x44},
+     60, 0},
+    {0xAC, (uint8_t[]){0x03, 0x19, 0x19, 0x18, 0x18, 0x06, 0x13, 0x13, 0x11, 0x11, 0x08, 0x08, 0x0A, 0x0A, 0x1C,
+                       0x1C, 0x07, 0x07, 0x00, 0x00, 0x02, 0x02, 0x01, 0x19, 0x19, 0x18, 0x18, 0x06, 0x12, 0x12,
+                       0x10, 0x10, 0x09, 0x09, 0x0B, 0x0B, 0x1C, 0x1C, 0x07, 0x07, 0x03, 0x03, 0x01, 0x01},
+     44, 0},
+    {0xAD, (uint8_t[]){0xF0, 0x00, 0x46, 0x00, 0x03, 0x50, 0x50, 0xFF, 0xFF, 0xF0, 0x40, 0x06, 0x01,
+                       0x07, 0x42, 0x42, 0xFF, 0xFF, 0x01, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF},
+     25, 0},
+    {0xAE, (uint8_t[]){0xFE, 0x3F, 0x3F, 0xFE, 0x3F, 0x3F, 0x00}, 7, 0},
+    {0xB2, (uint8_t[]){0x15, 0x19, 0x05, 0x23, 0x49, 0xAF, 0x03, 0x2E, 0x5C, 0xD2, 0xFF, 0x10, 0x20,
+                       0xFD, 0x20, 0xC0, 0x00}, 17, 0},
+    {0xE8, (uint8_t[]){0x20, 0x6F, 0x04, 0x97, 0x97, 0x3E, 0x04, 0xDC, 0xDC, 0x3E, 0x06, 0xFA, 0x26, 0x3E}, 14, 0},
+    {0x75, (uint8_t[]){0x03, 0x04}, 2, 0},
+    {0xE7, (uint8_t[]){0x3B, 0x00, 0x00, 0x7C, 0xA1, 0x8C, 0x20, 0x1A, 0xF0, 0xB1, 0x50, 0x00,
+                       0x50, 0xB1, 0x50, 0xB1, 0x50, 0xD8, 0x00, 0x55, 0x00, 0xB1, 0x00, 0x45,
+                       0xC9, 0x6A, 0xFF, 0x5A, 0xD8, 0x18, 0x88, 0x15, 0xB1, 0x01, 0x01, 0x77},
+     36, 0},
+    {0xEA, (uint8_t[]){0x13, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x2C}, 8, 0},
+    {0xB0, (uint8_t[]){0x22, 0x43, 0x11, 0x61, 0x25, 0x43, 0x43}, 7, 0},
+    {0xb7, (uint8_t[]){0x00, 0x00, 0x73, 0x73}, 4, 0},
+    {0xBF, (uint8_t[]){0xA6, 0xAA}, 2, 0},
+    {0xA9, (uint8_t[]){0x00, 0x00, 0x73, 0xFF, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03}, 10, 0},
+    {0xC8, (uint8_t[]){0x00, 0x00, 0x10, 0x1F, 0x36, 0x00, 0x5D, 0x04, 0x9D, 0x05, 0x10, 0xF2, 0x06,
+                       0x60, 0x03, 0x11, 0xAD, 0x00, 0xEF, 0x01, 0x22, 0x2E, 0x0E, 0x74, 0x08, 0x32,
+                       0xDC, 0x09, 0x33, 0x0F, 0xF3, 0x77, 0x0D, 0xB0, 0xDC, 0x03, 0xFF},
+     37, 0},
+    {0xC9, (uint8_t[]){0x00, 0x00, 0x10, 0x1F, 0x36, 0x00, 0x5D, 0x04, 0x9D, 0x05, 0x10, 0xF2, 0x06,
+                       0x60, 0x03, 0x11, 0xAD, 0x00, 0xEF, 0x01, 0x22, 0x2E, 0x0E, 0x74, 0x08, 0x32,
+                       0xDC, 0x09, 0x33, 0x0F, 0xF3, 0x77, 0x0D, 0xB0, 0xDC, 0x03, 0xFF},
+     37, 0},
+    {0x36, (uint8_t[]){0x00}, 1, 0},
+    {0x11, (uint8_t[]){0x00}, 1, 100},
+    {0x29, (uint8_t[]){0x00}, 1, 0},
+    {0x35, (uint8_t[]){0x00}, 1, 100},
+};
+
+// --- PI4IOE5V6408 IO expander init ---
+// Two chips: PI4IOE1 (0x43) controls LCD_RST, TP_RST, SPK_EN, EXT5V, CAM_RST
+//            PI4IOE2 (0x44) controls WLAN_PWR, USB5V, CHG_EN
+static void pi4ioe_init(void)
 {
-    i2c_device_config_t dev_cfg = {
-        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-        .device_address  = IO_EXP_ADDR,
-        .scl_speed_hz    = I2C_SPEED_HZ,
+    i2c_master_bus_handle_t bus;
+    i2c_master_bus_config_t bus_cfg = {
+        .clk_source              = I2C_CLK_SRC_DEFAULT,
+        .i2c_port                = I2C_BUS_NUM,
+        .sda_io_num              = I2C_SDA_GPIO,
+        .scl_io_num              = I2C_SCL_GPIO,
+        .flags.enable_internal_pullup = true,
     };
-    i2c_master_dev_handle_t dev;
-    ESP_ERROR_CHECK(i2c_master_bus_add_device(bus, &dev_cfg, &dev));
+    ESP_ERROR_CHECK(i2c_new_master_bus(&bus_cfg, &bus));
 
-    // Set output register first (all pins high) before switching to output mode
-    uint8_t out_cmd[] = {IO_EXP_REG_OUTPUT, 0xFF};
-    ESP_ERROR_CHECK(i2c_master_transmit(dev, out_cmd, 2, 100));
+    i2c_master_dev_handle_t dev1, dev2;
+    i2c_device_config_t dev_cfg1 = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address  = PI4IOE1_ADDR,
+        .scl_speed_hz    = 400000,
+    };
+    ESP_ERROR_CHECK(i2c_master_bus_add_device(bus, &dev_cfg1, &dev1));
 
-    // Set pins 4 (LCD_EN) and 5 (TOUCH_EN) as outputs; leave others as inputs
-    // Config reg: 0=output, 1=input. Clear bits 4 and 5 → 0xCF
-    uint8_t dir_cmd[] = {IO_EXP_REG_CONFIG, 0xCF};
-    ESP_ERROR_CHECK(i2c_master_transmit(dev, dir_cmd, 2, 100));
+    uint8_t wb[2], rb[1];
 
-    ESP_ERROR_CHECK(i2c_master_bus_rm_device(dev));
+    // PI4IOE1: P0=NC, P1=SPK_EN, P2=EXT5V_EN, P3=NC, P4=LCD_RST, P5=TP_RST, P6=CAM_RST, P7=IN
+    wb[0] = PI4IO_REG_CHIP_RESET; wb[1] = 0xFF;
+    i2c_master_transmit(dev1, wb, 2, I2C_TIMEOUT_MS);
+    wb[0] = PI4IO_REG_CHIP_RESET;
+    i2c_master_transmit_receive(dev1, wb, 1, rb, 1, I2C_TIMEOUT_MS);
+    wb[0] = PI4IO_REG_IO_DIR; wb[1] = 0b01111111;  // P0-P6 output, P7 input
+    i2c_master_transmit(dev1, wb, 2, I2C_TIMEOUT_MS);
+    wb[0] = PI4IO_REG_OUT_H_IM; wb[1] = 0b00000000;
+    i2c_master_transmit(dev1, wb, 2, I2C_TIMEOUT_MS);
+    wb[0] = PI4IO_REG_PULL_SEL; wb[1] = 0b01111111;
+    i2c_master_transmit(dev1, wb, 2, I2C_TIMEOUT_MS);
+    wb[0] = PI4IO_REG_PULL_EN; wb[1] = 0b01111111;
+    i2c_master_transmit(dev1, wb, 2, I2C_TIMEOUT_MS);
+    // Drive SPK_EN(P1), EXT5V_EN(P2), LCD_RST(P4), TP_RST(P5), CAM_RST(P6) high
+    wb[0] = PI4IO_REG_OUT_SET; wb[1] = 0b01110110;
+    i2c_master_transmit(dev1, wb, 2, I2C_TIMEOUT_MS);
+
+    i2c_device_config_t dev_cfg2 = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address  = PI4IOE2_ADDR,
+        .scl_speed_hz    = 400000,
+    };
+    ESP_ERROR_CHECK(i2c_master_bus_add_device(bus, &dev_cfg2, &dev2));
+
+    // PI4IOE2: P0=WLAN_PWR_EN, P3=USB5V_EN, P7=CHG_EN
+    wb[0] = PI4IO_REG_CHIP_RESET; wb[1] = 0xFF;
+    i2c_master_transmit(dev2, wb, 2, I2C_TIMEOUT_MS);
+    wb[0] = PI4IO_REG_CHIP_RESET;
+    i2c_master_transmit_receive(dev2, wb, 1, rb, 1, I2C_TIMEOUT_MS);
+    wb[0] = PI4IO_REG_IO_DIR; wb[1] = 0b10111001;
+    i2c_master_transmit(dev2, wb, 2, I2C_TIMEOUT_MS);
+    wb[0] = PI4IO_REG_OUT_H_IM; wb[1] = 0b00000110;
+    i2c_master_transmit(dev2, wb, 2, I2C_TIMEOUT_MS);
+    wb[0] = PI4IO_REG_PULL_SEL; wb[1] = 0b10111001;
+    i2c_master_transmit(dev2, wb, 2, I2C_TIMEOUT_MS);
+    wb[0] = PI4IO_REG_PULL_EN; wb[1] = 0b11111001;
+    i2c_master_transmit(dev2, wb, 2, I2C_TIMEOUT_MS);
+    wb[0] = PI4IO_REG_IN_DEF_STA; wb[1] = 0b01000000;
+    i2c_master_transmit(dev2, wb, 2, I2C_TIMEOUT_MS);
+    wb[0] = PI4IO_REG_INT_MASK; wb[1] = 0b10111111;
+    i2c_master_transmit(dev2, wb, 2, I2C_TIMEOUT_MS);
+    // Drive WLAN_PWR_EN(P0), USB5V_EN(P3) high
+    wb[0] = PI4IO_REG_OUT_SET; wb[1] = 0b00001001;
+    i2c_master_transmit(dev2, wb, 2, I2C_TIMEOUT_MS);
 }
 
 // --- RGB565 helpers ---
@@ -105,40 +220,48 @@ void board_init(void)
 {
     ESP_LOGI(TAG, "%s init", BOARD_NAME);
 
-    // Step 1: I2C bus (shared by IO expander and touch)
-    i2c_master_bus_handle_t i2c_bus = NULL;
-    i2c_master_bus_config_t i2c_cfg = {
-        .i2c_port              = I2C_NUM_0,
-        .sda_io_num            = I2C_SDA_GPIO,
-        .scl_io_num            = I2C_SCL_GPIO,
-        .clk_source            = I2C_CLK_SRC_DEFAULT,
-        .flags.enable_internal_pullup = true,
-    };
-    ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_cfg, &i2c_bus));
+    // 1. I2C + IO expander (must happen before display init to assert LCD_RST)
+    pi4ioe_init();
 
-    // Step 2: IO expander — power LCD and touch before DSI init
-    io_expander_enable_lcd_touch(i2c_bus);
-    vTaskDelay(pdMS_TO_TICKS(10));  // allow power rails to settle
-
-    // Step 3: LDO for MIPI PHY
-    esp_ldo_channel_handle_t ldo = NULL;
+    // 2. LDO for MIPI DSI PHY
+    esp_ldo_channel_handle_t phy_ldo = NULL;
     esp_ldo_channel_config_t ldo_cfg = {
         .chan_id    = DSI_PHY_LDO_CHAN,
-        .voltage_mv = DSI_PHY_LDO_MV,
+        .voltage_mv = DSI_PHY_LDO_VOLTAGE_MV,
     };
-    ESP_ERROR_CHECK(esp_ldo_acquire_channel(&ldo_cfg, &ldo));
+    ESP_ERROR_CHECK(esp_ldo_acquire_channel(&ldo_cfg, &phy_ldo));
 
-    // Step 4: MIPI-DSI bus
+    // 3. Backlight PWM (LEDC, 12-bit, 5 kHz)
+    const ledc_timer_config_t bl_timer = {
+        .speed_mode      = LEDC_LOW_SPEED_MODE,
+        .duty_resolution = LCD_LEDC_DUTY_RES,
+        .timer_num       = LCD_LEDC_TIMER,
+        .freq_hz         = LCD_LEDC_FREQ_HZ,
+        .clk_cfg         = LEDC_AUTO_CLK,
+    };
+    ESP_ERROR_CHECK(ledc_timer_config(&bl_timer));
+    const ledc_channel_config_t bl_chan = {
+        .gpio_num   = LCD_BACKLIGHT_GPIO,
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .channel    = LCD_LEDC_CHAN,
+        .intr_type  = LEDC_INTR_DISABLE,
+        .timer_sel  = LCD_LEDC_TIMER,
+        .duty       = 0,
+        .hpoint     = 0,
+    };
+    ESP_ERROR_CHECK(ledc_channel_config(&bl_chan));
+
+    // 4. MIPI DSI bus (2 lanes, 965 Mbps)
     esp_lcd_dsi_bus_handle_t dsi_bus = NULL;
-    esp_lcd_dsi_bus_config_t dsi_bus_cfg = {
+    esp_lcd_dsi_bus_config_t dsi_cfg = {
         .bus_id             = 0,
-        .num_data_lanes     = DSI_LANE_NUM,
+        .num_data_lanes     = 2,
         .phy_clk_src        = MIPI_DSI_PHY_CLK_SRC_DEFAULT,
-        .lane_bit_rate_mbps = DSI_LANE_MBPS,
+        .lane_bit_rate_mbps = DSI_LANE_BITRATE,
     };
-    ESP_ERROR_CHECK(esp_lcd_new_dsi_bus(&dsi_bus_cfg, &dsi_bus));
+    ESP_ERROR_CHECK(esp_lcd_new_dsi_bus(&dsi_cfg, &dsi_bus));
 
-    // Step 5: DBI (command) interface
+    // 5. DBI panel IO (command channel over DSI)
     esp_lcd_panel_io_handle_t io = NULL;
     esp_lcd_dbi_io_config_t dbi_cfg = {
         .virtual_channel = 0,
@@ -147,67 +270,62 @@ void board_init(void)
     };
     ESP_ERROR_CHECK(esp_lcd_new_panel_io_dbi(dsi_bus, &dbi_cfg, &io));
 
-    // Step 6: DPI (pixel) interface — timing from Espressif BSP (verified)
+    // 6. DPI panel (pixel data)
     esp_lcd_dpi_panel_config_t dpi_cfg = {
         .virtual_channel    = 0,
         .dpi_clk_src        = MIPI_DSI_DPI_CLK_SRC_DEFAULT,
-        .dpi_clock_freq_mhz = DSI_DPI_CLK_MHZ,
-        .in_color_format    = LCD_COLOR_FMT_RGB565,
+        .dpi_clock_freq_mhz = DPI_CLOCK_MHZ,
+        .pixel_format       = LCD_COLOR_PIXEL_FORMAT_RGB565,
         .num_fbs            = 1,
         .video_timing = {
             .h_size            = LCD_W,
             .v_size            = LCD_H,
-            .hsync_back_porch  = 140,
-            .hsync_pulse_width = 40,
+            .hsync_pulse_width = 2,
+            .hsync_back_porch  = 40,
             .hsync_front_porch = 40,
-            .vsync_back_porch  = 20,
-            .vsync_pulse_width = 4,
-            .vsync_front_porch = 20,
+            .vsync_pulse_width = 2,
+            .vsync_back_porch  = 8,
+            .vsync_front_porch = 220,
         },
-        .flags = { .use_dma2d = true },
+        .flags.use_dma2d = true,
     };
 
-    ili9881c_vendor_config_t vendor_cfg = {
-        .init_cmds      = disp_init_data,
-        .init_cmds_size = sizeof(disp_init_data) / sizeof(disp_init_data[0]),
+    // 7. ST7123 vendor config
+    st7123_vendor_config_t vendor_cfg = {
+        .init_cmds      = s_st7123_init,
+        .init_cmds_size = sizeof(s_st7123_init) / sizeof(s_st7123_init[0]),
         .mipi_config = {
             .dsi_bus    = dsi_bus,
             .dpi_config = &dpi_cfg,
-            .lane_num   = DSI_LANE_NUM,
+            .lane_num   = 2,
         },
     };
-
-    esp_lcd_panel_dev_config_t panel_cfg = {
-        .reset_gpio_num       = GPIO_NUM_NC,
-        .flags.reset_active_high = 0,
-        .rgb_ele_order        = LCD_RGB_ELEMENT_ORDER_RGB,
-        .bits_per_pixel       = 16,
-        .vendor_config        = &vendor_cfg,
+    const esp_lcd_panel_dev_config_t dev_cfg = {
+        .reset_gpio_num = -1,
+        .rgb_ele_order  = LCD_RGB_ELEMENT_ORDER_RGB,
+        .data_endian    = LCD_RGB_DATA_ENDIAN_LITTLE,
+        .bits_per_pixel = 24,
+        .vendor_config  = &vendor_cfg,
     };
-    ESP_ERROR_CHECK(esp_lcd_new_panel_ili9881c(io, &panel_cfg, &s_panel));
+    ESP_ERROR_CHECK(esp_lcd_new_panel_st7123(io, &dev_cfg, &s_panel));
     ESP_ERROR_CHECK(esp_lcd_panel_reset(s_panel));
     ESP_ERROR_CHECK(esp_lcd_panel_init(s_panel));
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(s_panel, true));
 
-    // Step 7: Backlight — GPIO22, active HIGH
-    gpio_config_t bl_cfg = {
-        .pin_bit_mask = 1ULL << BK_LIGHT_GPIO,
-        .mode         = GPIO_MODE_OUTPUT,
-    };
-    ESP_ERROR_CHECK(gpio_config(&bl_cfg));
-    gpio_set_level(BK_LIGHT_GPIO, 1);
-
-    // Step 8: Hardware framebuffer from DPI panel
+    // 8. Get hardware framebuffer and allocate render buffer
     void *fb0 = NULL;
     ESP_ERROR_CHECK(esp_lcd_dpi_panel_get_frame_buffer(s_panel, 1, &fb0));
     s_fb = (uint8_t *)fb0;
 
-    // Step 9: Render buffer in PSRAM (DMA-capable for cache sync)
     s_backbuf = heap_caps_aligned_calloc(64, FB_SIZE, 1,
                     MALLOC_CAP_SPIRAM | MALLOC_CAP_DMA);
     assert(s_backbuf);
     memset(s_fb, 0, FB_SIZE);
     esp_cache_msync(s_fb, FB_SIZE, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
+
+    // 9. Backlight on (100%)
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LCD_LEDC_CHAN, LCD_LEDC_DUTY_MAX);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LCD_LEDC_CHAN);
 
     ESP_LOGI(TAG, "%s init done", BOARD_NAME);
 }

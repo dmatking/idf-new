@@ -1,6 +1,6 @@
 {
   "display_name": "M5Stack Tab5",
-  "panel": "ILI9881C",
+  "panel": "ST7123",
   "has_touch": true,
   "screen": {
     "size_inches": 5.0,
@@ -12,8 +12,7 @@
     "mipi-dsi",
     "rgb565",
     "esp32p4",
-    "touch",
-    "idf-5.4.2"
+    "touch"
   ],
   "board_features": []
 }

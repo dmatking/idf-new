@@ -1,0 +1,1 @@
+list(APPEND EXTRA_REQUIRES "esp_lcd_st7123" "esp_mm" "esp_hw_support")
