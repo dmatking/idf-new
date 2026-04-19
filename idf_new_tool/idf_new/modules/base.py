@@ -3,9 +3,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from __future__ import annotations
+
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Protocol, Dict, List
+from typing import TYPE_CHECKING, Protocol, Dict, List
+
+if TYPE_CHECKING:
+    from ..boards import BoardInfo
 
 
 @dataclass
@@ -13,6 +18,7 @@ class ModuleContext:
     project_dir: Path
     main_dir: Path
     cmake_extra_path: Path
+    board_info: BoardInfo | None = None
 
 
 class Module(Protocol):

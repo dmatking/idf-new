@@ -21,6 +21,8 @@ class BoardScreen:
     resolution: str | None = None
     technology: str | None = None
     shape: str | None = None
+    width: int | None = None
+    height: int | None = None
 
 
 @dataclass(slots=True)
@@ -55,11 +57,21 @@ def _load_board_info(board_id: str, directory: Path) -> BoardInfo:
     screen = None
     screen_data = data.get("screen")
     if isinstance(screen_data, dict):
+        res = screen_data.get("resolution")
+        w = h = None
+        if res:
+            try:
+                parts = str(res).lower().split("x")
+                w, h = int(parts[0]), int(parts[1])
+            except (ValueError, IndexError):
+                pass
         screen = BoardScreen(
             size_inches=screen_data.get("size_inches"),
-            resolution=screen_data.get("resolution"),
+            resolution=res,
             technology=screen_data.get("technology"),
             shape=screen_data.get("shape"),
+            width=w,
+            height=h,
         )
 
     def _str_list(raw: Any) -> list[str]:

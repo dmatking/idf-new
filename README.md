@@ -196,6 +196,74 @@ Use `idf-new --list-modules` to see registered modules.
 
 ---
 
+## Desktop Simulator (`--sim`)
+
+For boards with an LCD, `--sim` adds a native desktop build that renders your display code in an SDL2 window — no hardware needed. It can also save PNG screenshots for documentation.
+
+```bash
+idf-new my_project --board waveshare/wvshr_p4_720_touch --sim
+```
+
+This creates a `sim/` directory inside the generated project:
+
+```
+my_project/
+├── main/             # Your ESP-IDF app code (runs on device)
+└── sim/
+    ├── CMakeLists.txt
+    ├── main_sim.c    # Desktop entry point (replace gradient with your rendering)
+    └── screencap/    # git submodule — esp32-screencap library
+```
+
+The sim compiles your project's `main/` drawing code (via `board_interface.h`) against a native SDL2 backend instead of real hardware. Your rendering code runs unchanged.
+
+### Building and running
+
+```bash
+cd my_project/sim
+mkdir build && cd build
+cmake .. && make
+./my_project_sim                                  # interactive SDL2 window
+./my_project_sim --screenshot out.png --frames 1  # headless PNG capture
+```
+
+**Prerequisites:** `libsdl2-dev` (Debian/Ubuntu: `sudo apt install libsdl2-dev`)
+
+### Interactive mode
+
+- Live SDL2 window with integer-scaled preview
+- Press **P** to save a screenshot (`screenshot_NNNN.png`)
+- **Esc** or close the window to quit
+
+### Headless mode
+
+Works over SSH with no display server — useful for CI or headless Pis:
+
+```bash
+./my_project_sim --screenshot summary.png --frames 1
+```
+
+`--frames N` runs N iterations of your render loop before saving. This lets you capture specific screens if your app cycles through multiple views.
+
+### How it works
+
+The sim reuses your project's rendering code through `board_interface.h` — the same HAL that idf-new scaffolds for every LCD board. A generic `board_interface_sim.c` (provided by esp32-screencap) implements the HAL against an in-memory framebuffer. SDL2 displays it on screen; `stb_image_write` saves it as PNG.
+
+Your drawing code doesn't know or care whether it's running on an ESP32 or a desktop — it just calls `board_lcd_set_pixel_rgb()`, `board_lcd_flush()`, etc.
+
+### X11 forwarding
+
+To view the SDL2 window from a remote Pi on your local machine:
+
+```bash
+ssh -X user@pi
+cd my_project/sim/build && ./my_project_sim
+```
+
+On Windows, WSL2 with WSLg handles X11 forwarding natively — just `ssh -X` from a WSL terminal.
+
+---
+
 ## Installation Notes
 
 idf-new must be installed as an editable install from the repo checkout — it reads `boards/`, `modules/`, and `idf-templates/` from the repo at runtime.
