@@ -280,6 +280,75 @@ pip install -e idf_new_tool
 
 ---
 
+## Using as an idf.py Extension (ESP-IDF v6.0+)
+
+ESP-IDF v6.0 supports Python package entry-point extensions that add subcommands directly to `idf.py`. idf-new ships one — install it into the v6.0 Python venv and the `idfnew-*` commands appear alongside `build`, `flash`, and `monitor`.
+
+### Install
+
+Install idf-new into the v6.0 venv (find the venv path with `eim run "python -c 'import sys; print(sys.prefix)'" v6.0`):
+
+```bash
+/home/$USER/.espressif/tools/python/v6.0/venv/bin/pip install -e /path/to/esp32-idf-new
+```
+
+The editable install means updates from `git pull` take effect immediately — no reinstall needed.
+
+### Verify
+
+```bash
+eim run "idf.py --help" v6.0  # idfnew-* commands should appear in the list
+```
+
+Or after activating the v6.0 environment:
+
+```bash
+. ~/.espressif/tools/activate_idf_v6.0.sh
+idf.py --help
+```
+
+### Available commands
+
+```bash
+# List all boards, optionally filtered by tag
+idf.py idfnew-boards
+idf.py idfnew-boards --find touch
+
+# Find boards by tag (shorthand)
+idf.py idfnew-find --tag amoled
+
+# List available modules grouped by category
+idf.py idfnew-modules
+
+# Generate a new project
+idf.py idfnew-create --name myapp --board m5stack/tab5
+idf.py idfnew-create --name myapp --board waveshare/wvshr200_touch --feature tf_card
+idf.py idfnew-create --name myapp --board generic --dest ~/projects/myapp --gps_neo6m
+```
+
+> **Note:** `idfnew-create` uses named options only — there is no positional argument for the project name. idf.py's command chaining (click `chain=True`) interprets anything after a positional argument as the next chained command, so `--name` is used instead.
+
+### After generating
+
+The generated project is a standard ESP-IDF project. Continue using `idf.py` as normal:
+
+```bash
+cd myapp
+idf.py set-target esp32s3
+idf.py build flash monitor
+```
+
+### Standalone CLI
+
+The standard `idf-new` command-line tool remains available alongside the extension:
+
+```bash
+idf-new --list-boards
+idf-new myapp --board m5stack/tab5
+```
+
+---
+
 ## Alternative: system-wide install
 
 If you don't want to manage a venv, you can install directly into your user Python environment. On Debian/Raspberry Pi OS you'll need to pass `--break-system-packages`:
