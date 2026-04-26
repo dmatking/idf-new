@@ -381,13 +381,3 @@ The goal is to make starting a new ESP32 project **boring** — in the best poss
 All original code in this repository is licensed under the **Apache License 2.0**.
 
 ESP-IDF and bundled third-party libraries are licensed separately under permissive licenses (Apache, MIT, BSD, etc.).
-
----
-
-Built with:
-
-- Python 3.13.5
-- ESP-IDF 5.5.1
-- [Claude Code](https://claude.ai/claude-code)
-
-<center> This repository was automatically pushed to GitHub from my self-hosted <a href="https://forgejo.org/">Forgejo</a> server. </center>
