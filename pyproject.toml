@@ -15,6 +15,9 @@ dependencies = []
 [project.scripts]
 idf-new = "idf_new.cli:main"
 
+[project.entry-points.idf_extension]
+idf_new_ext = "idf_new.idf_new_ext:action_extensions"
+
 [project.optional-dependencies]
 test = ["pytest>=8.0", "pyyaml"]
 

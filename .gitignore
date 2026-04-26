@@ -25,5 +25,7 @@ test/
 boards/lilygo/tdisp191_amoled_touch/vendor/
 idf_new_tool/idf_new.egg-info/
 
-# Claude launch scripts
+# Claude launch scripts and session data
 claude*.sh
+start-claude.sh
+.claude/
