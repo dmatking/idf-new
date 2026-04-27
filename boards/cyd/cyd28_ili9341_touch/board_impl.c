@@ -295,8 +295,8 @@ void board_lcd_sanity_test(void)
         ESP_LOGW(TAG, "Panel missing; skip sanity test");
         return;
     }
-    const uint16_t colors[] = {0xF800, 0x07E0, 0x001F, 0x0000};
-    for (int i = 0; i < 4; i++) {
+    const uint16_t colors[] = {0xF800, 0x07E0, 0x001F, 0xFFFF, 0x0000};
+    for (int i = 0; i < 5; i++) {
         board_lcd_fill(colors[i]);
         vTaskDelay(pdMS_TO_TICKS(500));
     }
