@@ -52,7 +52,7 @@ You'll need:
 
 - **Python 3.11+**
 - **ESP-IDF installed** and `idf.py` available in your shell
-  (tested with ESP-IDF **v5.5.1**)
+  (ESP-IDF **v5.5.3+** recommended; v6.x also works)
 
 Quick sanity check:
 
