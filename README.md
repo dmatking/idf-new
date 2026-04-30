@@ -12,21 +12,21 @@ idf-new my_project --board waveshare/wvshr185_round_touch --feature tf_card --si
 
 ## Supported Boards
 
-| Board                                | Display              | Board ID                                     |
-| ------------------------------------ | -------------------- | -------------------------------------------- |
-| CYD 2.8" ILI9341 resistive touch     | 2.8" TN 240×320      | `cyd/cyd28_ili9341_touch`                    |
-| CYD 3.5" ST7796 resistive touch      | 3.5" IPS 320×480     | `cyd/cyd35_st7796_touch`                     |
-| ESP32-S3-DevKitC + Newhaven 2.4" IPS | 2.4" IPS 240×320     | `espressif/esp32s3_devkitc_nhd240320_st7789` |
-| HackerBox 107 round                  | 1.28" IPS 240×240    | `hackerbox/hb107_round128`                   |
-| LilyGO T4 S3 AMOLED touch            | 2.41" AMOLED 450×600 | `lilygo/t4s3_amoled_touch`                   |
-| LilyGO T-Display S3 AMOLED touch     | 1.91" AMOLED 536×240 | `lilygo/tdisp191_amoled_touch`               |
-| M5Stack Tab5                         | 5.0" IPS 720×1280    | `m5stack/tab5`                               |
-| Waveshare Round LCD 1.85"            | 1.85" IPS 360×360    | `waveshare/wvshr185_round`                   |
-| Waveshare Round Touch LCD 1.85"      | 1.85" IPS 360×360    | `waveshare/wvshr185_round_touch`             |
-| Waveshare Touch LCD 2.0"             | 2.0" IPS 240×320     | `waveshare/wvshr200`                         |
-| Waveshare Touch LCD 2.0" (touch)     | 2.0" IPS 240×320     | `waveshare/wvshr200_touch`                   |
-| Waveshare P4 WiFi6 Touch LCD 4B      | 4.0" IPS 720×720     | `waveshare/wvshr_p4_720_touch`               |
-| Generic (any ESP32, no display)      | —                    | `generic`                                    |
+| Board                                | Chip      | Display                         | Interface | Touch | Board ID                                     |
+| ------------------------------------ | --------- | ------------------------------- | --------- | ----- | -------------------------------------------- |
+| M5Stack Tab5                         | ESP32-P4  | ST7123 5.0" IPS 720×1280        | MIPI-DSI  | Yes   | `m5stack/tab5`                               |
+| Waveshare P4 WiFi6 Touch LCD 4B      | ESP32-P4  | ST7703 4.0" IPS 720×720         | MIPI-DSI  | Yes   | `waveshare/wvshr_p4_720_touch`               |
+| LilyGO T4 S3 AMOLED touch            | ESP32-S3  | RM690B0 2.41" AMOLED 450×600    | QSPI      | Yes   | `lilygo/t4s3_amoled_touch`                   |
+| LilyGO T-Display S3 AMOLED touch     | ESP32-S3  | RM67162 1.91" AMOLED 536×240    | QSPI      | Yes   | `lilygo/tdisp191_amoled_touch`               |
+| Waveshare Round Touch LCD 1.85"      | ESP32-S3  | ST77916 1.85" IPS 360×360 round | QSPI      | Yes   | `waveshare/wvshr185_round_touch`             |
+| Waveshare Round LCD 1.85"            | ESP32-S3  | ST77916 1.85" IPS 360×360 round | QSPI      | No    | `waveshare/wvshr185_round`                   |
+| Waveshare Touch LCD 2.0"             | ESP32-S3  | ST7789 2.0" IPS 240×320         | SPI       | Yes   | `waveshare/wvshr200_touch`                   |
+| Waveshare Touch LCD 2.0"             | ESP32-S3  | ST7789 2.0" IPS 240×320         | SPI       | No    | `waveshare/wvshr200`                         |
+| ESP32-S3-DevKitC + Newhaven 2.4" IPS | ESP32-S3  | ST7789 2.4" IPS 240×320         | i80 8-bit | No    | `espressif/esp32s3_devkitc_nhd240320_st7789` |
+| HackerBox 107 round                  | ESP32-S3  | GC9A01 1.28" IPS 240×240 round  | SPI       | No    | `hackerbox/hb107_round128`                   |
+| CYD 2.8" ILI9341 resistive touch     | ESP32     | ILI9341 2.8" TN 240×320         | SPI       | Yes   | `cyd/cyd28_ili9341_touch`                    |
+| CYD 3.5" ST7796 resistive touch      | ESP32     | ST7796 3.5" IPS 320×480         | SPI       | Yes   | `cyd/cyd35_st7796_touch`                     |
+| Generic (any ESP32, no display)      | any       | —                               | —         | —     | `generic`                                    |
 
 Run `idf-new --list-boards` to see what's available in your checkout.
 
@@ -234,36 +234,6 @@ This command:
 6. Updates project name and CMake config
 
 The result is a minimal, fully wired ESP-IDF project ready to build.
-
----
-
-## Supported boards
-
-### ESP32-P4
-
-| Board ID                       | Display                | Interface | Touch |
-| ------------------------------ | ---------------------- | --------- | ----- |
-| `m5stack/tab5`                 | ST7123 5" 720×1280 IPS | MIPI-DSI  | Yes   |
-| `waveshare/wvshr_p4_720_touch` | ST7703 4" 720×720 IPS  | MIPI-DSI  | Yes   |
-
-### ESP32-S3
-
-| Board ID                                     | Display                         | Interface | Touch |
-| -------------------------------------------- | ------------------------------- | --------- | ----- |
-| `waveshare/wvshr185_round_touch`             | ST77916 1.85" 360×360 IPS round | QSPI      | Yes   |
-| `waveshare/wvshr185_round`                   | ST77916 1.85" 360×360 IPS round | QSPI      | No    |
-| `waveshare/wvshr200_touch`                   | ST7789 2.0" 240×320 IPS         | SPI       | Yes   |
-| `waveshare/wvshr200`                         | ST7789 2.0" 240×320 IPS         | SPI       | No    |
-| `lilygo/t4s3_amoled_touch`                   | RM690B0 2.41" 450×600 AMOLED    | QSPI      | Yes   |
-| `lilygo/tdisp191_amoled_touch`               | RM67162 1.91" 536×240 AMOLED    | QSPI      | Yes   |
-| `hackerbox/hb107_round128`                   | GC9A01 1.28" 240×240 IPS round  | SPI       | No    |
-| `espressif/esp32s3_devkitc_nhd240320_st7789` | ST7789 2.4" 240×320 IPS         | i80 8-bit | No    |
-
-### Headless / generic
-
-| Board ID  | Notes                                |
-| --------- | ------------------------------------ |
-| `generic` | No LCD; all display calls are no-ops |
 
 ---
 
