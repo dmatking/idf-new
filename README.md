@@ -21,7 +21,7 @@ idf-new my_project --board waveshare/wvshr185_round_touch --feature tf_card --si
 | Waveshare Round Touch LCD 1.85"      | ESP32‑S3  | ST77916 1.85" IPS 360×360 round | QSPI      | CST816             | `waveshare/wvshr185_round_touch`             |
 | Waveshare Round LCD 1.85"            | ESP32‑S3  | ST77916 1.85" IPS 360×360 round | QSPI      | —                  | `waveshare/wvshr185_round`                   |
 | Waveshare Touch LCD 2.0"             | ESP32‑S3  | ST7789 2.0" IPS 240×320         | SPI       | CST816S            | `waveshare/wvshr200_touch`                   |
-| Waveshare Touch LCD 2.0"             | ESP32‑S3  | ST7789 2.0" IPS 240×320         | SPI       | —                  | `waveshare/wvshr200`                         |
+| Waveshare LCD 2.0"                   | ESP32‑S3  | ST7789 2.0" IPS 240×320         | SPI       | —                  | `waveshare/wvshr200`                         |
 | ESP32‑S3-DevKitC + Newhaven 2.4" IPS | ESP32‑S3  | ST7789 2.4" IPS 240×320         | i80 8-bit | —                  | `espressif/esp32s3_devkitc_nhd240320_st7789` |
 | HackerBox 107 round                  | ESP32‑S3  | GC9A01 1.28" IPS 240×240 round  | SPI       | —                  | `hackerbox/hb107_round128`                   |
 | CYD 2.8" ILI9341 resistive touch     | ESP32     | ILI9341 2.8" TN 240×320         | SPI       | XPT2046 (resistive)| `cyd/cyd28_ili9341_touch`                    |
