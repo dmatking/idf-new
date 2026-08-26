@@ -112,7 +112,7 @@ that everything is built on top of.
 
 ---
 
-## Novel features
+## Features
 
 ### 1. Dual entry point: standalone CLI + native `idf.py` extension
 
